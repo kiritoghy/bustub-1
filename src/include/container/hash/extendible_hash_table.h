@@ -181,6 +181,7 @@ class ExtendibleHashTable : public HashTable<K, V> {
    * @param bucket The bucket to be redistributed.
    */
   auto RedistributeBucket(std::shared_ptr<Bucket> bucket) -> void;
+  auto ImageBucketIndex(size_t index) -> size_t;
 
   /*****************************************************************
    * Must acquire latch_ first before calling the below functions. *

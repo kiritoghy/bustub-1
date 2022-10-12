@@ -17,6 +17,7 @@
 #include <utility>
 
 #include "common/logger.h"
+#include "common/macros.h"
 #include "container/hash/extendible_hash_table.h"
 #include "storage/page/page.h"
 
@@ -25,7 +26,8 @@ namespace bustub {
 template <typename K, typename V>
 ExtendibleHashTable<K, V>::ExtendibleHashTable(size_t bucket_size)
     : global_depth_(0), bucket_size_(bucket_size), num_buckets_(1) {
-  dir_.push_back(std::make_shared<Bucket>(bucket_size, 0));
+  dir_.resize(1);
+  dir_[0] = std::make_shared<Bucket>(bucket_size, 0);
 }
 
 template <typename K, typename V>
@@ -75,7 +77,6 @@ auto ExtendibleHashTable<K, V>::GetNumBucketsInternal() const -> int {
 
 template <typename K, typename V>
 auto ExtendibleHashTable<K, V>::Find(const K &key, V &value) -> bool {
-  // UNREACHABLE("not implemented");
   std::scoped_lock<std::mutex> lock(latch_);
   auto index = IndexOf(key);
   return dir_[index]->Find(key, value);
@@ -83,68 +84,81 @@ auto ExtendibleHashTable<K, V>::Find(const K &key, V &value) -> bool {
 
 template <typename K, typename V>
 auto ExtendibleHashTable<K, V>::Remove(const K &key) -> bool {
-  // UNREACHABLE("not implemented");
   std::scoped_lock<std::mutex> lock(latch_);
   auto index = IndexOf(key);
   return dir_[index]->Remove(key);
 }
 
 template <typename K, typename V>
-auto ExtendibleHashTable<K, V>::Insert(const K &key, const V &value) -> void {
-  // UNREACHABLE("not implemented");
+void ExtendibleHashTable<K, V>::Insert(const K &key, const V &value) {
   std::scoped_lock<std::mutex> lock(latch_);
-  // auto index = IndexOf(key);
-  // if (dir_[index]->Insert(key, value)) {
-  //   // insert success
-  //   return;
-  // }
-  // if (dir_[index]->IsFull()) {  // bucket is full, ready to spilt
-  //   Spilt(index);
-  //   Insert(key, value);
-  // } else {
-  //   Insert(key, value);
-  // }
   auto index = IndexOf(key);
-  while (!dir_[index]->Insert(key, value)) {
-    Spilt(index);
+
+  while (dir_[index]->IsFull()) {
+    auto local_depth = dir_[index]->GetDepth();
+
+    // grow directory first
+    if (local_depth == GetGlobalDepthInternal()) {
+      Grow();
+    }
+
+    auto old_bucket = dir_[index];
+    auto image_index = ImageBucketIndex(index);
+
+    auto new_bucket = std::make_shared<Bucket>(bucket_size_, local_depth + 1);
+    auto image_bucket = std::make_shared<Bucket>(bucket_size_, local_depth + 1);
+    auto bucket_index_mask = (static_cast<size_t>(1) << new_bucket->GetDepth()) - 1;
+
+    for (size_t i = 0; i < dir_.size(); i++) {
+      if (dir_[i] == old_bucket) {
+        if ((i & bucket_index_mask) == (index & bucket_index_mask)) {
+          dir_[i] = new_bucket;
+        } else if ((i & bucket_index_mask) == (image_index & bucket_index_mask)) {
+          dir_[i] = image_bucket;
+        } else {
+          BUSTUB_ENSURE(false, "# In insert");
+        }
+      }
+    }
+
+    num_buckets_++;
+
+    // can't pass dir_[index], because we have place a new bucket at index.
+    RedistributeBucket(old_bucket);
+    // update index
     index = IndexOf(key);
   }
+
+  assert(!dir_[index]->IsFull());
+  assert(dir_[index]->Insert(key, value));
 }
 
 template <typename K, typename V>
-auto ExtendibleHashTable<K, V>::Spilt(int index) -> void {
-  auto bucket = dir_[index];
-  bucket->IncrementDepth();
-  if (bucket->GetDepth() > global_depth_) {
-    Grow();
-  }
-  auto pair_index = IndexOfPair(index);
-  dir_[pair_index] = std::make_shared<Bucket>(bucket_size_, dir_[index]->GetDepth());
-  int diff = 1 << dir_[index]->GetDepth();
+auto ExtendibleHashTable<K, V>::ImageBucketIndex(size_t index) -> size_t {
+  auto local_depth = dir_[index]->GetDepth();
+  // auto low_index = index & ((static_cast<size_t>(1) << (local_depth + 1)) - 1);
+  auto mask = static_cast<size_t>(1) << local_depth;
+  return index ^ mask;
+}
 
-  for (int i = pair_index - diff; i >= 0; i -= diff) {
-    dir_[i] = dir_[pair_index];
+template <typename K, typename V>
+auto ExtendibleHashTable<K, V>::RedistributeBucket(std::shared_ptr<Bucket> bucket) -> void {
+  auto items = bucket->GetItems();
+  for (auto iter = items.begin(); iter != items.end(); iter++) {
+    auto index = IndexOf(iter->first);
+    dir_[index]->Insert(iter->first, iter->second);
   }
-  for (int i = pair_index + diff; i < 1 << global_depth_; i += diff) {
-    dir_[i] = dir_[pair_index];
-  }
-
-  for (size_t i = 0; i < bucket_size_; ++i) {
-    auto kv_pair = dir_[index]->GetItems().front();
-    dir_[index]->GetItems().pop_front();
-    auto new_index = IndexOf(kv_pair.first);
-    dir_[new_index]->Insert(kv_pair.first, kv_pair.second);
-  }
-
-  num_buckets_++;
 }
 
 template <typename K, typename V>
 auto ExtendibleHashTable<K, V>::Grow() -> void {
-  for (int i = 0; i < 1 << global_depth_; ++i) {
-    dir_.push_back(dir_[i]);
-  }
   global_depth_++;
+  auto new_size = 1 << global_depth_;
+  auto old_size = new_size >> 1;
+  dir_.resize(new_size);
+  for (int i = 0; i < old_size; i++) {
+    dir_[i + old_size] = dir_[i];
+  }
 }
 
 //===--------------------------------------------------------------------===//
