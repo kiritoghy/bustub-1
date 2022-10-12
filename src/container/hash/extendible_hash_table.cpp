@@ -25,7 +25,8 @@ namespace bustub {
 template <typename K, typename V>
 ExtendibleHashTable<K, V>::ExtendibleHashTable(size_t bucket_size)
     : global_depth_(0), bucket_size_(bucket_size), num_buckets_(1) {
-  dir_.push_back(std::make_shared<Bucket>(bucket_size, 0));
+  dir_.resize(1);
+  dir_[0] = std::make_shared<Bucket>(bucket_size, 0);
 }
 
 template <typename K, typename V>
@@ -141,10 +142,13 @@ auto ExtendibleHashTable<K, V>::Spilt(int index) -> void {
 
 template <typename K, typename V>
 auto ExtendibleHashTable<K, V>::Grow() -> void {
-  for (int i = 0; i < 1 << global_depth_; ++i) {
-    dir_.push_back(dir_[i]);
-  }
   global_depth_++;
+  auto new_size = 1 << global_depth_;
+  auto old_size = new_size >> 1;
+  dir_.resize(new_size);
+  for (int i = 0; i < old_size; i++) {
+    dir_[i + old_size] = dir_[i];
+  }
 }
 
 //===--------------------------------------------------------------------===//
