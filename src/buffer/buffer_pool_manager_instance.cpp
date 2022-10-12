@@ -90,7 +90,7 @@ auto BufferPoolManagerInstance::FetchPgImp(page_id_t page_id) -> Page * {
     disk_manager_->WritePage(page.page_id_, page.data_);
   }
   page_table_->Remove(page.page_id_);
-  page.ResetMemory();
+  // page.ResetMemory();
   page.page_id_ = page_id;
   page.pin_count_ = 1;
   page.is_dirty_ = false;

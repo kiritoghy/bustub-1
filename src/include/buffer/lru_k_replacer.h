@@ -175,7 +175,7 @@ class LRUKReplacer {
     size_t timestamps_;
     bool is_evictable_;
   };
-  
+
   [[maybe_unused]] size_t current_timestamp_{0};
   [[maybe_unused]] size_t curr_size_{0};
   [[maybe_unused]] size_t replacer_size_;
