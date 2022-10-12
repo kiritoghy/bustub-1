@@ -49,6 +49,16 @@ class BPlusTreeLeafPage : public BPlusTreePage {
   auto GetNextPageId() const -> page_id_t;
   void SetNextPageId(page_id_t next_page_id);
   auto KeyAt(int index) const -> KeyType;
+  auto ValueAt(int index) const -> ValueType;
+  auto kvAt(int index) -> const MappingType &;
+  auto GetValue(const KeyType &key, std::vector<ValueType> *result, const KeyComparator &comparator) -> bool;
+  auto Insert(const KeyType &key, const ValueType &value, const KeyComparator &comparator) -> bool;
+  auto IsFull() const -> bool;
+  // 获取所有数据的同时，将新的kv也按序插入到返回的结果集中
+  auto GetDataWithNewKV(std::vector<MappingType> *result, const KeyType &key, const ValueType &value,
+                        const KeyComparator &comparator) -> bool;
+  auto CopyDataFrom(std::vector<MappingType> &datas, int first, int last) -> void;
+  auto SearchIndexByKey(const KeyType &key, const KeyComparator &comparator) -> int;
 
  private:
   page_id_t next_page_id_;

@@ -22,98 +22,93 @@ auto LRUKReplacer::Evict(frame_id_t *frame_id) -> bool {
     return false;
   }
 
-  if (!history_.empty()) {
-    for (auto itor = history_.begin(); itor != history_.end(); ++itor) {
-      if (itor->get()->Evictable()) {
-        curr_size_--;
-        *frame_id = itor->get()->FrameId();
-        history_.erase(itor);
-        frames_.erase(*frame_id);
-        return true;
-      }
+  for (auto iter = fifo_.begin(); iter != fifo_.end(); iter++) {
+    if ((*iter)->evictable_) {
+      *frame_id = (*iter)->frame_id_;
+      items_.erase(*frame_id);
+      fifo_.erase(iter);
+      curr_size_--;
+      return true;
     }
   }
 
-  if (!cache_.empty()) {
-    for (auto itor = cache_.begin(); itor != history_.end(); ++itor) {
-      if (itor->get()->Evictable()) {
-        curr_size_--;
-        *frame_id = itor->get()->FrameId();
-        cache_.erase(itor);
-        frames_.erase(*frame_id);
-        return true;
-      }
+  for (auto iter = k_distance_.begin(); iter != k_distance_.end(); iter++) {
+    if ((*iter)->evictable_) {
+      *frame_id = (*iter)->frame_id_;
+      items_.erase(*frame_id);
+      k_distance_.erase(iter);
+      curr_size_--;
+      return true;
     }
   }
-
   return false;
 }
 
 void LRUKReplacer::RecordAccess(frame_id_t frame_id) {
   std::scoped_lock<std::mutex> lock(latch_);
-  // BUSTUB_ASSERT(frame_id <= (frame_id_t)replacer_size_, "frame id is invalid");
-  auto kv = frames_.find(frame_id);
+  current_timestamp_++;
+  auto iter = items_.find(frame_id);
 
-  // not found a frame
-  if (kv == frames_.end()) {
-    // curr_size_++;
-    auto frame_meta = std::make_shared<FrameMeta>(frame_id, current_timestamp_++);
-    history_.emplace_back(frame_meta);
-    frames_[frame_id] = frame_meta;
+  // if frame_id is the first time add to replace
+  if (iter == items_.end()) {
+    auto new_item = std::make_shared<Item>(frame_id, current_timestamp_, false);
+    items_.insert(std::make_pair(frame_id, new_item));
+    if (new_item->access_count_ >= k_) {
+      k_distance_.push_back(new_item);
+    } else {
+      fifo_.push_back(new_item);
+    }
     return;
   }
 
-  auto frame_ptr = kv->second;
-  frame_ptr->Access(current_timestamp_++);
-
-  // now access times reach k, move it in cache
-  if (frame_ptr->AccessTimes() == k_) {
-    history_.remove(frame_ptr);
-    cache_.emplace_back(frame_ptr);
-  } else if (frame_ptr->AccessTimes() > k_) {
-    // lru rule
-    cache_.remove(frame_ptr);
-    cache_.emplace_back(frame_ptr);
+  auto item = iter->second;
+  item->access_count_++;
+  item->access_time_ = current_timestamp_;
+  if (item->access_count_ < k_) {
+    // do nothing
+  } else if (item->access_count_ == k_) {
+    fifo_.remove(item);
+    k_distance_.push_back(item);
+  } else {
+    k_distance_.remove(item);
+    k_distance_.push_back(item);
   }
-  // frame access times < k, FIFO rule
 }
 
 void LRUKReplacer::SetEvictable(frame_id_t frame_id, bool set_evictable) {
   std::scoped_lock<std::mutex> lock(latch_);
-  auto kv = frames_.find(frame_id);
-  if (kv != frames_.end()) {
-    auto frame_ptr = kv->second;
-    if (frame_ptr->Evictable() && !set_evictable) {
-      // set evictable to false
-      curr_size_--;
-      frame_ptr->SetEvictable(set_evictable);
-    } else if (!frame_ptr->Evictable() && set_evictable) {
-      ++curr_size_;
-      frame_ptr->SetEvictable(set_evictable);
-    }
+  auto iter = items_.find(frame_id);
+  if (iter == items_.end()) {
+    return;
+  }
+  // TODO(tyb)
+  // BUSTUB_ENSURE(iter != items_.end(), "# Invalid frame_id");
+  auto previous_evictable = iter->second->evictable_;
+  iter->second->evictable_ = set_evictable;
+  if (previous_evictable && !set_evictable) {
+    curr_size_--;
+  }
+  if (!previous_evictable && set_evictable) {
+    curr_size_++;
   }
 }
 
 void LRUKReplacer::Remove(frame_id_t frame_id) {
   std::scoped_lock<std::mutex> lock(latch_);
-  // BUSTUB_ASSERT(frame_id <= (frame_id_t)replacer_size_, "frame id is invalid");
-  auto kv = frames_.find(frame_id);
-  if (kv == frames_.end()) {
+  auto iter = items_.find(frame_id);
+  if (iter == items_.end()) {
     return;
   }
 
-  auto frame_ptr = kv->second;
-  if (!frame_ptr->Evictable()) {
-    return;
-  }
-
-  curr_size_--;
-  if (frame_ptr->AccessTimes() < k_) {
-    history_.remove(frame_ptr);
+  auto item = iter->second;
+  BUSTUB_ENSURE(item->evictable_, "# Remove a non_evictable frame");
+  if (item->access_count_ >= k_) {
+    k_distance_.remove(item);
   } else {
-    cache_.remove(frame_ptr);
+    fifo_.remove(item);
   }
-  frames_.erase(frame_id);
+  items_.erase(iter);
+  curr_size_--;
 }
 
 auto LRUKReplacer::Size() -> size_t {

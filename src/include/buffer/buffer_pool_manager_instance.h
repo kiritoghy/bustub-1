@@ -177,5 +177,9 @@ class BufferPoolManagerInstance : public BufferPoolManager {
   }
 
   // TODO(student): You may add additional private members and helper functions
+
+  auto PickFrame(frame_id_t *frame_id) -> bool;
+
+  auto ResetPage(Page *page, page_id_t page_id, bool is_dirty, int pin_count) -> void;
 };
 }  // namespace bustub

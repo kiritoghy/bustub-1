@@ -82,6 +82,13 @@ class BPlusTree {
 
   void ToString(BPlusTreePage *page, BufferPoolManager *bpm) const;
 
+  // make sure unpin the returned page
+  auto FindLeafPage(const KeyType &key) -> Page *;
+
+  auto InsertInParent(Page *page1, const KeyType &key, Page *page2) -> bool;
+
+  auto LeftmostLeafPageId() -> page_id_t;
+
   // member variable
   std::string index_name_;
   page_id_t root_page_id_;

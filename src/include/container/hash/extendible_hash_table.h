@@ -182,6 +182,12 @@ class ExtendibleHashTable : public HashTable<K, V> {
    */
   auto RedistributeBucket(std::shared_ptr<Bucket> bucket) -> void;
 
+  auto FillNewBucket(size_t index, std::shared_ptr<Bucket> bucket) -> void;
+
+  auto ImageBucketIndex(size_t index) -> size_t;
+
+  auto GrowDirectory() -> void;
+
   /*****************************************************************
    * Must acquire latch_ first before calling the below functions. *
    *****************************************************************/
@@ -192,13 +198,10 @@ class ExtendibleHashTable : public HashTable<K, V> {
    * @return The entry index in the directory.
    */
   auto IndexOf(const K &key) -> size_t;
-  auto IndexOfPair(int dir_index) -> size_t;
 
   auto GetGlobalDepthInternal() const -> int;
   auto GetLocalDepthInternal(int dir_index) const -> int;
   auto GetNumBucketsInternal() const -> int;
-  auto Spilt(int index) -> void;
-  auto Grow() -> void;
 };
 
 }  // namespace bustub

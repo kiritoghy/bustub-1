@@ -41,6 +41,12 @@ class BPlusTreeInternalPage : public BPlusTreePage {
   auto KeyAt(int index) const -> KeyType;
   void SetKeyAt(int index, const KeyType &key);
   auto ValueAt(int index) const -> ValueType;
+  auto Insert(const KeyType &key, const ValueType &value, const KeyComparator &compoarator) -> bool;
+  auto InsertAt(int index, const KeyType &key, const ValueType &value) -> void;
+  auto IsFull() const -> bool;
+  auto GetDataWithNewKV(std::vector<MappingType> *result, const KeyType &key, const ValueType &value,
+                        const KeyComparator &comparator) -> bool;
+  auto CopyDataFrom(std::vector<MappingType> &datas, int first, int last) -> void;
 
  private:
   // Flexible array member for page data.
