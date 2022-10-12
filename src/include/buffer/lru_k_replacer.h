@@ -14,11 +14,13 @@
 
 #include <limits>
 #include <list>
+#include <memory>
 #include <mutex>  // NOLINT
 #include <unordered_map>
 #include <vector>
 
 #include "common/config.h"
+#include "common/logger.h"
 #include "common/macros.h"
 
 namespace bustub {
@@ -34,6 +36,36 @@ namespace bustub {
  * +inf as its backward k-distance. When multipe frames have +inf backward k-distance,
  * classical LRU algorithm is used to choose victim.
  */
+
+class FrameMeta {
+ public:
+  FrameMeta(const frame_id_t frame_id, const size_t timestamps)
+      : frame_id_(frame_id), cur_(1), timestamps_(timestamps), is_evictable_(true) {}
+  // FrameMeta(const FrameMeta &&fm) noexcept
+  //     : frame_id_(fm.frame_id_), cur_(fm.cur_), timestamps_(fm.timestamps_), is_evictable_(fm.is_evictable_) {}
+
+  auto CurrTimestamp() -> size_t { return timestamps_; }
+
+  auto FrameId() -> size_t { return frame_id_; }
+
+  auto AccessTimes() -> size_t { return cur_; }
+
+  auto SetEvictable(bool set_evivtable) -> void { is_evictable_ = set_evivtable; }
+
+  auto Evictable() -> bool { return is_evictable_; }
+
+  auto Access(size_t timestamps) -> void {
+    ++cur_;
+    timestamps_ = timestamps;
+  }
+
+ private:
+  frame_id_t frame_id_;
+  size_t cur_;
+  size_t timestamps_;
+  bool is_evictable_;
+};
+
 class LRUKReplacer {
  public:
   /**
@@ -139,6 +171,11 @@ class LRUKReplacer {
   [[maybe_unused]] size_t curr_size_{0};
   [[maybe_unused]] size_t replacer_size_;
   [[maybe_unused]] size_t k_;
+  std::unordered_map<frame_id_t, std::list<std::unique_ptr<FrameMeta>>::iterator> frames_;
+  std::list<std::unique_ptr<FrameMeta>> history_;      // frame access times < k
+  std::list<std::unique_ptr<FrameMeta>> cache_;        // frame access times >= k
+  std::list<std::unique_ptr<FrameMeta>> unevictable_;  // frame which is set to unevictable;
+  static int evict_counts_;
   std::mutex latch_;
 };
 
