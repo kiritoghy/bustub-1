@@ -167,15 +167,22 @@ class LRUKReplacer {
  private:
   // TODO(student): implement me! You can replace these member variables as you like.
   // Remove maybe_unused if you start using them.
+  struct FrameMeta {
+    FrameMeta(const frame_id_t frame_id, const size_t timestamps)
+        : frame_id_(frame_id), cur_(1), timestamps_(timestamps), is_evictable_(true) {}
+    frame_id_t frame_id_;
+    size_t cur_;
+    size_t timestamps_;
+    bool is_evictable_;
+  };
+  
   [[maybe_unused]] size_t current_timestamp_{0};
   [[maybe_unused]] size_t curr_size_{0};
   [[maybe_unused]] size_t replacer_size_;
   [[maybe_unused]] size_t k_;
-  std::unordered_map<frame_id_t, std::list<std::unique_ptr<FrameMeta>>::iterator> frames_;
-  std::list<std::unique_ptr<FrameMeta>> history_;      // frame access times < k
-  std::list<std::unique_ptr<FrameMeta>> cache_;        // frame access times >= k
-  std::list<std::unique_ptr<FrameMeta>> unevictable_;  // frame which is set to unevictable;
-  static int evict_counts_;
+  std::unordered_map<frame_id_t, std::shared_ptr<FrameMeta>> frames_;
+  std::list<std::shared_ptr<FrameMeta>> history_;  // frame access times < k
+  std::list<std::shared_ptr<FrameMeta>> cache_;    // frame access times >= k
   std::mutex latch_;
 };
 

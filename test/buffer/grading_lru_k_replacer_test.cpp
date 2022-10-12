@@ -494,7 +494,7 @@ TEST(LRUKReplacerTest, ConcurrencyTest) {  // NOLINT
   ASSERT_EQ(1000, lru_replacer.Size());
 
   // Remove frame id 250-500, set some keys to be non-evictable, and insert accesses concurrently
-  
+
   threads.emplace_back(std::thread{record_access_thread, 250, 1000, true, true});
   threads.emplace_back(std::thread{record_access_thread, 500, 1000, true, true});
   threads.emplace_back(std::thread{record_access_thread, 750, 1000, true, true});
@@ -507,7 +507,6 @@ TEST(LRUKReplacerTest, ConcurrencyTest) {  // NOLINT
   }
   threads.clear();
 
-  lru_replacer.Size();
   // Call remove again to ensure all items between 250, 500 have been removed.
   threads.emplace_back(std::thread{remove_task_thread, 250, 400});
   threads.emplace_back(std::thread{remove_task_thread, 400, 500});
@@ -519,7 +518,6 @@ TEST(LRUKReplacerTest, ConcurrencyTest) {  // NOLINT
 
   ASSERT_EQ(500, lru_replacer.Size());
 
-  LOG_INFO("--------------------------------------start last test------------------------------------");
   std::mutex mutex;
   std::vector<int> evicted_elements;
 
