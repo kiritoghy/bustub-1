@@ -167,6 +167,15 @@ class LRUKReplacer {
  private:
   // TODO(student): implement me! You can replace these member variables as you like.
   // Remove maybe_unused if you start using them.
+  struct FrameMeta {
+    FrameMeta(const frame_id_t frame_id, const size_t timestamps, bool is_evictable)
+        : frame_id_(frame_id), cur_(1), timestamps_(timestamps), is_evictable_(is_evictable) {}
+    frame_id_t frame_id_;
+    size_t cur_;
+    size_t timestamps_;
+    bool is_evictable_;
+  };
+
   [[maybe_unused]] size_t current_timestamp_{0};
   [[maybe_unused]] size_t curr_size_{0};
   [[maybe_unused]] size_t replacer_size_;
