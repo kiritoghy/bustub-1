@@ -40,7 +40,7 @@ namespace bustub {
 class FrameMeta {
  public:
   FrameMeta(const frame_id_t frame_id, const size_t timestamps)
-      : frame_id_(frame_id), cur_(1), timestamps_(timestamps), is_evictable_(true) {}
+      : frame_id_(frame_id), cur_(1), timestamps_(timestamps), is_evictable_(false) {}
   // FrameMeta(const FrameMeta &&fm) noexcept
   //     : frame_id_(fm.frame_id_), cur_(fm.cur_), timestamps_(fm.timestamps_), is_evictable_(fm.is_evictable_) {}
 

@@ -51,12 +51,12 @@ auto LRUKReplacer::Evict(frame_id_t *frame_id) -> bool {
 
 void LRUKReplacer::RecordAccess(frame_id_t frame_id) {
   std::scoped_lock<std::mutex> lock(latch_);
-  //BUSTUB_ASSERT(frame_id <= (frame_id_t)replacer_size_, "frame id is invalid");
+  // BUSTUB_ASSERT(frame_id <= (frame_id_t)replacer_size_, "frame id is invalid");
   auto kv = frames_.find(frame_id);
 
   // not found a frame
   if (kv == frames_.end()) {
-    curr_size_++;
+    // curr_size_++;
     auto frame_meta = std::make_shared<FrameMeta>(frame_id, current_timestamp_++);
     history_.emplace_back(frame_meta);
     frames_[frame_id] = frame_meta;
@@ -92,12 +92,11 @@ void LRUKReplacer::SetEvictable(frame_id_t frame_id, bool set_evictable) {
       frame_ptr->SetEvictable(set_evictable);
     }
   }
-
 }
 
 void LRUKReplacer::Remove(frame_id_t frame_id) {
   std::scoped_lock<std::mutex> lock(latch_);
-  //BUSTUB_ASSERT(frame_id <= (frame_id_t)replacer_size_, "frame id is invalid");
+  // BUSTUB_ASSERT(frame_id <= (frame_id_t)replacer_size_, "frame id is invalid");
   auto kv = frames_.find(frame_id);
   if (kv == frames_.end()) {
     return;
