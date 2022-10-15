@@ -10,6 +10,7 @@
 //===----------------------------------------------------------------------===//
 #pragma once
 
+#include <memory>
 #include <utility>
 #include <vector>
 
@@ -49,6 +50,11 @@ class BPlusTreeLeafPage : public BPlusTreePage {
   auto GetNextPageId() const -> page_id_t;
   void SetNextPageId(page_id_t next_page_id);
   auto KeyAt(int index) const -> KeyType;
+  auto GetValue(const KeyType &key, std::vector<ValueType> *result, const KeyComparator &keyComparator) -> bool;
+  auto IsFull() -> bool { return GetSize() >= GetMaxSize(); }
+  auto Insert(const KeyType &key, const ValueType &value, const KeyComparator &comparator) -> bool;
+  auto GetDataCopy(std::vector<MappingType> &data_copy, const KeyType &key, const ValueType &value,
+                   const KeyComparator &comparator) -> bool;
 
  private:
   page_id_t next_page_id_;
