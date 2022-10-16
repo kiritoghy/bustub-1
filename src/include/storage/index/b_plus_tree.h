@@ -85,6 +85,10 @@ class BPlusTree {
   inline auto GetBPlusTreePage(page_id_t page_id) -> BPlusTreePage *;
 
   auto FindLeafPage(const KeyType &key) -> LeafPage *;
+
+  auto FindSmallestLeafPage() -> LeafPage *; 
+
+  auto InsertInParent(BPlusTreePage *page, const KeyType &key, BPlusTreePage *new_page) -> bool;
   // member variable
   std::string index_name_;
   page_id_t root_page_id_;

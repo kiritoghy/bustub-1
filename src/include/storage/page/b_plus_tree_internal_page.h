@@ -41,7 +41,11 @@ class BPlusTreeInternalPage : public BPlusTreePage {
   auto KeyAt(int index) const -> KeyType;
   void SetKeyAt(int index, const KeyType &key);
   auto ValueAt(int index) const -> ValueType;
-
+  auto IsFull() -> bool { return GetSize() >= GetMaxSize(); }
+  auto Insert(const KeyType &key, const ValueType &value, const KeyComparator &comparator, int position = -1) -> bool;
+  auto GetDataCopy(std::vector<MappingType> &data_copy, const KeyType &key, const ValueType &value,
+                   const KeyComparator &comparator) -> bool;
+  auto CopyDataFrom(std::vector<MappingType> &data_copy, int frist, int last) -> void;
  private:
   // Flexible array member for page data.
   MappingType array_[1];

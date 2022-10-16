@@ -55,6 +55,8 @@ class BPlusTreeLeafPage : public BPlusTreePage {
   auto Insert(const KeyType &key, const ValueType &value, const KeyComparator &comparator) -> bool;
   auto GetDataCopy(std::vector<MappingType> &data_copy, const KeyType &key, const ValueType &value,
                    const KeyComparator &comparator) -> bool;
+  auto CopyDataFrom(std::vector<MappingType> &data_copy, int first, int last) -> void;
+  auto GetKV(int index) -> const MappingType &;
 
  private:
   page_id_t next_page_id_;

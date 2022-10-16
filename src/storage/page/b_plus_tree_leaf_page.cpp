@@ -57,6 +57,12 @@ auto B_PLUS_TREE_LEAF_PAGE_TYPE::KeyAt(int index) const -> KeyType {
 }
 
 INDEX_TEMPLATE_ARGUMENTS
+auto B_PLUS_TREE_LEAF_PAGE_TYPE::GetKV(int index) -> const MappingType & {
+  BUSTUB_ASSERT(index < GetSize(), "wrong index in leaf Get KV_pair");
+  return array_[index];
+}
+
+INDEX_TEMPLATE_ARGUMENTS
 auto B_PLUS_TREE_LEAF_PAGE_TYPE::GetValue(const KeyType &key, std::vector<ValueType> *result,
                                           const KeyComparator &keyComparator) -> bool {
   for (int i = 0; i < GetSize(); ++i) {
@@ -113,6 +119,15 @@ auto B_PLUS_TREE_LEAF_PAGE_TYPE::GetDataCopy(std::vector<MappingType> &data_copy
     data_copy[i + 1] = array_[i];
   }
   return true;
+}
+
+INDEX_TEMPLATE_ARGUMENTS
+auto B_PLUS_TREE_LEAF_PAGE_TYPE::CopyDataFrom(std::vector<MappingType> &data_copy, int first, int last) -> void {
+  auto amount = last - first;
+  for (int i = 0; i < amount; ++i) {
+    array_[i] = data_copy[first + i];
+  }
+  IncreaseSize(amount);
 }
 
 template class BPlusTreeLeafPage<GenericKey<4>, RID, GenericComparator<4>>;
