@@ -116,6 +116,74 @@ auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::CopyDataFrom(std::vector<MappingType> &data
   }
   IncreaseSize(amount);
 }
+
+INDEX_TEMPLATE_ARGUMENTS
+auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::RemoveEntry(const KeyType &key, const KeyComparator &comparator) -> void {
+  int index = 1;
+  auto size = GetSize();
+  for (; index < size; ++index) {
+    if (comparator(key, array_[index].first) == 0) {
+      break;
+    }
+  }
+  if (index == size) {
+    // key doesn't exits;
+    return;
+  } else if(index < size - 1) {
+    std::move(array_ + index + 1, array_ + size, array_ + index);
+  }
+  IncreaseSize(-1);
+}
+
+INDEX_TEMPLATE_ARGUMENTS
+auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::KeyIndex(const KeyType &key, const KeyComparator &comparator) -> int {
+  int index = 1;
+  auto size = GetSize();
+  int comp;
+  for (; index < size; ++index) {
+    comp = comparator(key, array_[index].first) <= 0;
+    if (comp < 0) {
+      return index - 1;
+    }
+    if (comp == 0) {
+      return index;
+    }
+  }
+  return index - 1;
+}
+
+INDEX_TEMPLATE_ARGUMENTS
+auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::MoveFirstToEnd(B_PLUS_TREE_INTERNAL_PAGE_TYPE *b_plus_leaf_page, const KeyType &key) -> void {
+  auto size = b_plus_leaf_page->GetSize();
+  b_plus_leaf_page->array_[size] = array_[0];
+  b_plus_leaf_page->array_[size].first = key;
+  b_plus_leaf_page->IncreaseSize(1);
+  std::move(array_ + 1, array_ + GetSize(), array_);
+  IncreaseSize(-1);
+}
+
+
+INDEX_TEMPLATE_ARGUMENTS
+auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::MoveLastToFront(B_PLUS_TREE_INTERNAL_PAGE_TYPE *b, const KeyType &key) -> void {
+  auto size = b->GetSize();
+  std::move_backward(b->array_, b->array_+size, b->array_+size+1);
+  b->array_[0] = array_[GetSize()-1];
+  (b->array_+1)->first = key;
+  b->IncreaseSize(1);
+  IncreaseSize(-1);
+}
+
+INDEX_TEMPLATE_ARGUMENTS
+auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::MoveTo(B_PLUS_TREE_INTERNAL_PAGE_TYPE *left, const KeyType &key) -> void {
+  auto size = GetSize();
+  auto l_size = left->GetSize();
+  for (int i = 0; i < size; ++i) {
+    left->array_[l_size+i] = array_[i];
+  }
+  left->array_[l_size].first = key;
+  left->IncreaseSize(size);
+  IncreaseSize(-size);
+}
 // valuetype for internalNode should be page id_t
 template class BPlusTreeInternalPage<GenericKey<4>, page_id_t, GenericComparator<4>>;
 template class BPlusTreeInternalPage<GenericKey<8>, page_id_t, GenericComparator<8>>;

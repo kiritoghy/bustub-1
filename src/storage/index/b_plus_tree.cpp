@@ -227,7 +227,107 @@ auto BPLUSTREE_TYPE::Insert(const KeyType &key, const ValueType &value, Transact
  * necessary.
  */
 INDEX_TEMPLATE_ARGUMENTS
-void BPLUSTREE_TYPE::Remove(const KeyType &key, Transaction *transaction) {}
+void BPLUSTREE_TYPE::Remove(const KeyType &key, Transaction *transaction) {
+  if (IsEmpty()) {
+    return;
+  }
+  auto b_plus_leaf_page = FindLeafPage(key);
+  RemoveEntry<LeafPage>(reinterpret_cast<BPlusTreePage*>(b_plus_leaf_page), key);
+}
+
+INDEX_TEMPLATE_ARGUMENTS
+template<typename BPlusTreePageType>
+void BPLUSTREE_TYPE::RemoveEntry(BPlusTreePage *b_plus_tree_page, const KeyType &key) {
+  auto b_plus_page = reinterpret_cast<BPlusTreePageType*>(b_plus_tree_page);
+  b_plus_page->RemoveEntry(key, comparator_);
+
+  if (b_plus_page->IsRootPage()) {
+    // 非叶节点 将其子节点提上来作为根节点
+    if (!b_plus_page->IsLeafPage() && b_plus_page->GetSize() == 1) {
+      auto page = GetBPlusTreePage(reinterpret_cast<InternalPage*>(b_plus_page)->ValueAt(0));
+      root_page_id_ = page->GetPageId();
+      page->SetParentPageId(INVALID_PAGE_ID);
+      UpdateRootPageId(0);
+      auto old_page_id = b_plus_page->GetPageId();
+      buffer_pool_manager_->UnpinPage(old_page_id, true);
+      buffer_pool_manager_->DeletePage(old_page_id);
+      buffer_pool_manager_->UnpinPage(page->GetPageId(), true);
+    }
+    // 若是叶节点，则说明叶节点即是根节点，不用管。
+    buffer_pool_manager_->UnpinPage(b_plus_page->GetPageId(), true);
+    return;
+  } else if (b_plus_page->GetSize() < b_plus_page->GetMinSize()) {
+    // 非根节点并且数量少于最小数量
+    // coalesce_or_redistribute
+    // parent_page一定是InternalPage
+    auto page = GetBPlusTreePage(b_plus_page->GetParentPageId());
+    auto b_plus_parent_page = reinterpret_cast<InternalPage*>(page);
+    // 虽然子节点中删除了key，但是还能在父结点中找到key所在的pointer
+    int index = b_plus_parent_page->KeyIndex(key, comparator_);
+    page_id_t neighbor_page_id;
+    if (index == 0) {
+      neighbor_page_id = b_plus_parent_page->ValueAt(index + 1);
+    } else {
+      neighbor_page_id = b_plus_parent_page->ValueAt(index - 1);
+    }
+    page = GetBPlusTreePage(neighbor_page_id);
+    auto nei_b_plus_page = reinterpret_cast<BPlusTreePageType*>(page);
+    if (b_plus_page->GetSize() + nei_b_plus_page->GetSize() > b_plus_page->GetMaxSize()) {
+      Redistribute<BPlusTreePageType>(reinterpret_cast<BPlusTreePage*>(b_plus_page), reinterpret_cast<BPlusTreePage*>(nei_b_plus_page), b_plus_parent_page, index);
+    } else {
+      Coalesce<BPlusTreePageType>(reinterpret_cast<BPlusTreePage*>(b_plus_page), reinterpret_cast<BPlusTreePage*>(nei_b_plus_page), b_plus_parent_page, index);
+    }
+  }
+}
+
+INDEX_TEMPLATE_ARGUMENTS
+template<typename BPlusTreePageType>
+auto BPLUSTREE_TYPE::Redistribute(BPlusTreePage *b_plus_tree_page, BPlusTreePage *nei_b_plus_tree_page, InternalPage* b_plus_parent_page, int index) -> void {
+  BUSTUB_ASSERT(b_plus_tree_page->GetSize() < nei_b_plus_tree_page->GetSize(), "got invalid neighbor.");
+  auto b_plus_page = reinterpret_cast<BPlusTreePageType*>(b_plus_tree_page);
+  auto nei_b_plus_page = reinterpret_cast<BPlusTreePageType*>(nei_b_plus_tree_page);
+  if (index == 0) {
+    // neibor is at right
+    nei_b_plus_page->MoveFirstToEnd(b_plus_page, b_plus_parent_page->KeyAt(index+1));
+    b_plus_parent_page->SetKeyAt(index+1, nei_b_plus_page->KeyAt(0));
+  } else {
+    nei_b_plus_page->MoveLastToFront(b_plus_page, b_plus_parent_page->KeyAt(index));
+    b_plus_parent_page->SetKeyAt(index, b_plus_page->KeyAt(0));
+  }
+
+  buffer_pool_manager_->UnpinPage(b_plus_page->GetPageId(), true);
+  buffer_pool_manager_->UnpinPage(nei_b_plus_page->GetPageId(), true);
+  buffer_pool_manager_->UnpinPage(b_plus_parent_page->GetPageId(), true);
+}
+
+INDEX_TEMPLATE_ARGUMENTS
+template<typename BPlusTreePageType>
+auto BPLUSTREE_TYPE::Coalesce(BPlusTreePage *b_plus_tree_page, BPlusTreePage *nei_b_plus_tree_page, InternalPage* b_plus_parent_page, int index) -> void {
+  BPlusTreePageType *left = nullptr;
+  BPlusTreePageType *right = nullptr;
+
+  // move all right to left
+  if (index == 0) {
+    left = reinterpret_cast<BPlusTreePageType*>(b_plus_tree_page);
+    right = reinterpret_cast<BPlusTreePageType*>(nei_b_plus_tree_page);
+    index++;
+  } else {
+    left = reinterpret_cast<BPlusTreePageType*>(nei_b_plus_tree_page);
+    right = reinterpret_cast<BPlusTreePageType*>(b_plus_tree_page);
+  }
+
+  auto key = b_plus_parent_page->KeyAt(index);
+  right->MoveTo(left, key);
+  if (left->IsLeafPage()) {
+    reinterpret_cast<LeafPage*>(left)->SetNextPageId(reinterpret_cast<LeafPage*>(right)->GetNextPageId());
+  }
+
+  auto right_page_id = right->GetPageId();
+  buffer_pool_manager_->UnpinPage(left->GetPageId(), true);
+  buffer_pool_manager_->UnpinPage(right->GetPageId(), true);
+  buffer_pool_manager_->DeletePage(right_page_id);
+  RemoveEntry<InternalPage>(reinterpret_cast<BPlusTreePage*>(b_plus_parent_page), key);
+}
 
 INDEX_TEMPLATE_ARGUMENTS
 auto BPLUSTREE_TYPE::FindSmallestLeafPage() -> LeafPage * {
@@ -510,6 +610,65 @@ void BPLUSTREE_TYPE::ToString(BPlusTreePage *page, BufferPoolManager *bpm) const
   }
   bpm->UnpinPage(page->GetPageId(), false);
 }
+
+// INDEX_TEMPLATE_ARGUMENTS
+// void BPLUSTREE_TYPE::RemoveEntry(BPlusTreePage *b_plus_tree_page, const KeyType &key) {
+//   if (b_plus_tree_page->IsLeafPage()) {
+//     auto b_plus_leaf_page = reinterpret_cast<LeafPage*>(b_plus_tree_page);
+//     b_plus_leaf_page->RemoveEntry(key, comparator_);
+//   } else {
+//     auto b_plus_internal_page = reinterpret_cast<InternalPage*>(b_plus_tree_page);
+//     b_plus_internal_page->RemoveEntry(key, comparator_);
+//   }
+
+//   if (b_plus_tree_page->IsRootPage() && b_plus_tree_page->GetSize() == 1) {
+//     // 非叶节点 将其子节点提上来作为根节点
+//     if (!b_plus_tree_page->IsLeafPage()) {
+//       auto b_plus_internal_page = reinterpret_cast<InternalPage*>(b_plus_tree_page);
+//       auto page = GetBPlusTreePage(b_plus_internal_page->ValueAt(0));
+//       root_page_id_ = page->GetPageId();
+//       page->SetParentPageId(INVALID_PAGE_ID);
+//       UpdateRootPageId(0);
+//       buffer_pool_manager_->UnpinPage(page->GetPageId(), true);
+//     }
+//     // 若是叶节点，则说明叶节点即是根节点，不用管。
+//     buffer_pool_manager_->UnpinPage(b_plus_tree_page->GetPageId(), true);
+//     return;
+//   } else if (b_plus_tree_page->GetSize() < b_plus_tree_page->GetMinSize()) {
+//     // 非根节点并且数量少于最小数量
+//     // coalesce_or_redistribute
+//     // parent_page一定是InternalPage
+//     auto page = GetBPlusTreePage(b_plus_tree_page->GetParentPageId());
+//     auto b_plus_parent_page = reinterpret_cast<InternalPage*>(page);
+//     // 虽然子节点中删除了key，但是还能在父结点中找到key所在的pointer
+//     int index = b_plus_parent_page->KeyIndex(key, comparator_);
+//     page_id_t neighbor_page_id;
+//     if (index == 0) {
+//       neighbor_page_id = b_plus_parent_page->ValueAt(index + 1);
+//     } else {
+//       neighbor_page_id = b_plus_parent_page->ValueAt(index - 1);
+//     }
+//     if (b_plus_tree_page->IsLeafPage()) {
+//       page = GetBPlusTreePage(neighbor_page_id);
+//       auto nei_b_plus_leaf_page = reinterpret_cast<LeafPage*>(page);
+//       auto b_plus_leaf_page = reinterpret_cast<LeafPage*>(b_plus_tree_page);
+//       if (b_plus_leaf_page->GetSize() + nei_b_plus_leaf_page->GetSize() > b_plus_leaf_page->GetMaxSize()) {
+//         Redistribute(reinterpret_cast<BPlusTreePage*>(b_plus_leaf_page), reinterpret_cast<BPlusTreePage*>(nei_b_plus_leaf_page), b_plus_parent_page, index);
+//       } else {
+//         Coalesce(reinterpret_cast<BPlusTreePage*>(b_plus_leaf_page), reinterpret_cast<BPlusTreePage*>(nei_b_plus_leaf_page), b_plus_parent_page, index);
+//       }
+//     } else {
+//       page = GetBPlusTreePage(neighbor_page_id);
+//       auto nei_b_plus_leaf_page = reinterpret_cast<InternalPage*>(page);
+//       auto b_plus_leaf_page = reinterpret_cast<InternalPage*>(b_plus_tree_page);
+//       if (b_plus_leaf_page->GetSize() + nei_b_plus_leaf_page->GetSize() > b_plus_leaf_page->GetMaxSize()) {
+//         Redistribute<LeafPage>(reinterpret_cast<BPlusTreePage*>(b_plus_leaf_page), reinterpret_cast<BPlusTreePage*>(nei_b_plus_leaf_page), b_plus_parent_page, index);
+//       } else {
+//         Coalesce(reinterpret_casst<BPlusTreePage*>(b_plus_leaf_page), reinterpret_cast<BPlusTreePage*>(nei_b_plus_leaf_page), b_plus_parent_page, index);
+//       }
+//     }
+//   }
+// }
 
 template class BPlusTree<GenericKey<4>, RID, GenericComparator<4>>;
 template class BPlusTree<GenericKey<8>, RID, GenericComparator<8>>;

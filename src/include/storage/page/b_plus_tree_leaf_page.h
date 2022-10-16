@@ -50,6 +50,7 @@ class BPlusTreeLeafPage : public BPlusTreePage {
   auto GetNextPageId() const -> page_id_t;
   void SetNextPageId(page_id_t next_page_id);
   auto KeyAt(int index) const -> KeyType;
+  auto ValueAt(int index) const -> ValueType;
   auto GetValue(const KeyType &key, std::vector<ValueType> *result, const KeyComparator &keyComparator) -> bool;
   auto IsFull() -> bool { return GetSize() >= GetMaxSize(); }
   auto Insert(const KeyType &key, const ValueType &value, const KeyComparator &comparator) -> bool;
@@ -57,6 +58,10 @@ class BPlusTreeLeafPage : public BPlusTreePage {
                    const KeyComparator &comparator) -> bool;
   auto CopyDataFrom(std::vector<MappingType> &data_copy, int first, int last) -> void;
   auto GetKV(int index) -> const MappingType &;
+  auto RemoveEntry(const KeyType &key, const KeyComparator &comparator) -> void;
+  auto MoveFirstToEnd(B_PLUS_TREE_LEAF_PAGE_TYPE *b_plus_leaf_page, const KeyType &key) -> void;
+  auto MoveLastToFront(B_PLUS_TREE_LEAF_PAGE_TYPE *b_plus_leaf_page, const KeyType &key) -> void;
+  auto MoveTo(B_PLUS_TREE_LEAF_PAGE_TYPE *left, const KeyType &key) -> void;
 
  private:
   page_id_t next_page_id_;
