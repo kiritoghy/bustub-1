@@ -50,6 +50,7 @@ class BPlusTreeLeafPage : public BPlusTreePage {
   auto GetNextPageId() const -> page_id_t;
   void SetNextPageId(page_id_t next_page_id);
   auto KeyAt(int index) const -> KeyType;
+  auto KeyIndex(const KeyType &key, const KeyComparator &comparator) const -> int;
   auto ValueAt(int index) const -> ValueType;
   auto GetValue(const KeyType &key, std::vector<ValueType> *result, const KeyComparator &keyComparator) -> bool;
   auto IsFull() -> bool { return GetSize() >= GetMaxSize(); }

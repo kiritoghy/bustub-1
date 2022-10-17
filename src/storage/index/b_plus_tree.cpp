@@ -188,7 +188,10 @@ auto BPLUSTREE_TYPE::Insert(const KeyType &key, const ValueType &value, Transact
         buffer_pool_manager_->UnpinPage(b_plus_leaf_page->GetPageId(), false);
         return false;
       }
-
+      int index = b_plus_leaf_page->KeyIndex(key);
+      if (index < (max_size+1) / 2) {
+        
+      }
       page_id_t new_page_id;
       auto new_page = buffer_pool_manager_->NewPage(&new_page_id);
       BUSTUB_ASSERT(new_page != nullptr, "create a page for B+tree failed.");
