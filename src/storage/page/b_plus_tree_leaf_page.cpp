@@ -98,25 +98,12 @@ auto B_PLUS_TREE_LEAF_PAGE_TYPE::Insert(const KeyType &key, const ValueType &val
 }
 
 INDEX_TEMPLATE_ARGUMENTS
-auto B_PLUS_TREE_LEAF_PAGE_TYPE::GetDataCopy(std::vector<MappingType> &data_copy, const KeyType &key,
-                                             const ValueType &value, const KeyComparator &comparator) -> bool {
+auto B_PLUS_TREE_LEAF_PAGE_TYPE::GetDataCopy(std::vector<MappingType> &data_copy, const KeyComparator &comparator) -> bool {
   int i = 0;
   int size = GetSize();
   // 找到插入位置
   for (; i < size; ++i) {
-    auto comp = comparator(key, array_[i].first);
-    if (comp == 0) {
-      // 重复key
-      return false;
-    }
-    if (comp == -1) {
-      break;
-    }
     data_copy[i] = array_[i];
-  }
-  data_copy[i] = std::make_pair(key, value);
-  for (; i < size; ++i) {
-    data_copy[i + 1] = array_[i];
   }
   return true;
 }

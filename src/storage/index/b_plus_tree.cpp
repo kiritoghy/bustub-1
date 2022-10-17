@@ -121,6 +121,8 @@ auto BPLUSTREE_TYPE::InsertInParent(BPlusTreePage* b_plus_tree_page, const KeyTy
   // 内部节点中，分配第二个节点时，本应当从key1分配，但是由于第一个key会被插入到上一层节点
   // 因此可以将其放在key0， 而key0本身不会被访问到
   auto smallest_key = new_b_plus_parent_page->KeyAt(0);
+  b_plus_tree_page->SetParentPageId(new_page_id);
+  new_b_plus_tree_page->SetParentPageId(new_page_id);
   res = InsertInParent(reinterpret_cast<BPlusTreePage*>(b_plus_parent_page), smallest_key, reinterpret_cast<BPlusTreePage*>(new_b_plus_parent_page));
   buffer_pool_manager_->UnpinPage(b_plus_parent_page->GetPageId(), true);
   buffer_pool_manager_->UnpinPage(new_b_plus_parent_page->GetPageId(), true);
@@ -174,46 +176,45 @@ auto BPLUSTREE_TYPE::Insert(const KeyType &key, const ValueType &value, Transact
 
   if (!b_plus_leaf_page->IsFull()) {
     auto res = b_plus_leaf_page->Insert(key, value, comparator_);
+    if (res && b_plus_leaf_page->IsFull()) {
+      // 叶子节点满了，Spilt and Redistribute
+      // 创建一个临时节点，使用shared_ptr避免手动delete
+      // auto data_copy = std::make_shared<MappingType[]>(b_plus_leaf_page->GetSize()+1);
+      // std::shared_ptr<MappingType[]> data_copy(new MappingType[b_plus_leaf_page->GetSize() + 1]());
+      std::vector<MappingType> data_copy(b_plus_leaf_page->GetSize());
+      auto res = b_plus_leaf_page->GetDataCopy(data_copy, comparator_);
+      if (!res) {
+        // duplicate key exists
+        buffer_pool_manager_->UnpinPage(b_plus_leaf_page->GetPageId(), false);
+        return false;
+      }
+
+      page_id_t new_page_id;
+      auto new_page = buffer_pool_manager_->NewPage(&new_page_id);
+      BUSTUB_ASSERT(new_page != nullptr, "create a page for B+tree failed.");
+      auto new_b_plus_leaf_page = reinterpret_cast<LeafPage*>(new_page->GetData());
+
+      // 创建新的叶子节点并重新分配
+      new_b_plus_leaf_page->Init(new_page_id, b_plus_leaf_page->GetParentPageId(), leaf_max_size_);
+      new_b_plus_leaf_page->SetNextPageId(b_plus_leaf_page->GetNextPageId());
+      b_plus_leaf_page->SetNextPageId(new_page_id);
+      auto max_size = data_copy.size();
+      b_plus_leaf_page->SetSize(0);
+      b_plus_leaf_page->CopyDataFrom(data_copy, 0, (max_size+1) / 2);
+      new_b_plus_leaf_page->CopyDataFrom(data_copy, (max_size+1) / 2, max_size);
+
+      auto smallest_key = new_b_plus_leaf_page->KeyAt(0);
+
+      res = InsertInParent(reinterpret_cast<BPlusTreePage*>(b_plus_leaf_page), smallest_key, reinterpret_cast<BPlusTreePage*>(new_b_plus_leaf_page));
+      buffer_pool_manager_->UnpinPage(b_plus_leaf_page->GetPageId(), true);
+      buffer_pool_manager_->UnpinPage(new_b_plus_leaf_page->GetPageId(), true);
+      return res;
+    }
     buffer_pool_manager_->UnpinPage(b_plus_leaf_page->GetPageId(), true);
     return res;
   }
 
-  // 叶子节点满了，Spilt and Redistribute
-  // 创建一个临时节点，使用shared_ptr避免手动delete
-  // auto data_copy = std::make_shared<MappingType[]>(b_plus_leaf_page->GetSize()+1);
-  // std::shared_ptr<MappingType[]> data_copy(new MappingType[b_plus_leaf_page->GetSize() + 1]());
-  std::vector<MappingType> data_copy(b_plus_leaf_page->GetSize() + 1);
-  auto res = b_plus_leaf_page->GetDataCopy(data_copy, key, value, comparator_);
-  if (!res) {
-    // duplicate key exists
-    buffer_pool_manager_->UnpinPage(b_plus_leaf_page->GetPageId(), false);
-    return false;
-  }
-
-  page_id_t new_page_id;
-  auto new_page = buffer_pool_manager_->NewPage(&new_page_id);
-  BUSTUB_ASSERT(new_page != nullptr, "create a page for B+tree failed.");
-  auto new_b_plus_leaf_page = reinterpret_cast<LeafPage*>(new_page->GetData());
-
-  // 创建新的叶子节点并重新分配
-  new_b_plus_leaf_page->Init(new_page_id, b_plus_leaf_page->GetParentPageId(), leaf_max_size_);
-  new_b_plus_leaf_page->SetNextPageId(b_plus_leaf_page->GetNextPageId());
-  b_plus_leaf_page->SetNextPageId(new_page_id);
-  auto max_size = data_copy.size();
-  b_plus_leaf_page->SetSize(0);
-  b_plus_leaf_page->CopyDataFrom(data_copy, 0, (max_size+1) / 2);
-  new_b_plus_leaf_page->CopyDataFrom(data_copy, (max_size+1) / 2, max_size);
-  // auto size = b_plus_leaf_page->GetSize();
-  // b_plus_leaf_page->SetSize(0);
-  // b_plus_leaf_page->CopyDataFrom(data_copy, 0, size / 2 + 1);
-  // new_b_plus_leaf_page->CopyDataFrom(data_copy, size / 2 + 1, size + 1);
-
-  auto smallest_key = new_b_plus_leaf_page->KeyAt(0);
-
-  res = InsertInParent(reinterpret_cast<BPlusTreePage*>(b_plus_leaf_page), smallest_key, reinterpret_cast<BPlusTreePage*>(new_b_plus_leaf_page));
-  buffer_pool_manager_->UnpinPage(b_plus_leaf_page->GetPageId(), true);
-  buffer_pool_manager_->UnpinPage(new_b_plus_leaf_page->GetPageId(), true);
-  return res;
+  return false;
 }
 
 /*****************************************************************************

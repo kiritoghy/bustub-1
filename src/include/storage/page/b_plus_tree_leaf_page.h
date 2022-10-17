@@ -54,8 +54,7 @@ class BPlusTreeLeafPage : public BPlusTreePage {
   auto GetValue(const KeyType &key, std::vector<ValueType> *result, const KeyComparator &keyComparator) -> bool;
   auto IsFull() -> bool { return GetSize() >= GetMaxSize(); }
   auto Insert(const KeyType &key, const ValueType &value, const KeyComparator &comparator) -> bool;
-  auto GetDataCopy(std::vector<MappingType> &data_copy, const KeyType &key, const ValueType &value,
-                   const KeyComparator &comparator) -> bool;
+  auto GetDataCopy(std::vector<MappingType> &data_copy, const KeyComparator &comparator) -> bool;
   auto CopyDataFrom(std::vector<MappingType> &data_copy, int first, int last) -> void;
   auto GetKV(int index) -> const MappingType &;
   auto RemoveEntry(const KeyType &key, const KeyComparator &comparator) -> void;

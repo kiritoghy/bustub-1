@@ -84,6 +84,7 @@ class BPlusTree {
   // read data from file and remove one by one
   void RemoveFromFile(const std::string &file_name, Transaction *transaction = nullptr);
 
+  auto FindLeafPage(const KeyType &key) -> LeafPage *;
  private:
   void UpdateRootPageId(int insert_record = 0);
 
@@ -93,8 +94,6 @@ class BPlusTree {
   void ToString(BPlusTreePage *page, BufferPoolManager *bpm) const;
 
   inline auto GetBPlusTreePage(page_id_t page_id) -> BPlusTreePage *;
-
-  auto FindLeafPage(const KeyType &key) -> LeafPage *;
 
   auto FindSmallestLeafPage() -> LeafPage *; 
 
