@@ -260,9 +260,10 @@ void BPLUSTREE_TYPE::RemoveEntry(BPlusTreePage *b_plus_tree_page, const KeyType 
       buffer_pool_manager_->UnpinPage(old_page_id, true);
       buffer_pool_manager_->DeletePage(old_page_id);
       buffer_pool_manager_->UnpinPage(page->GetPageId(), true);
+    } else {
+      // 若是叶节点，则说明叶节点即是根节点，不用管。
+      buffer_pool_manager_->UnpinPage(b_plus_page->GetPageId(), true);
     }
-    // 若是叶节点，则说明叶节点即是根节点，不用管。
-    buffer_pool_manager_->UnpinPage(b_plus_page->GetPageId(), true);
     return;
   } else if (b_plus_page->GetSize() < b_plus_page->GetMinSize()) {
     // 非根节点并且数量少于最小数量

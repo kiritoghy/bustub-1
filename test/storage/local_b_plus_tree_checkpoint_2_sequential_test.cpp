@@ -271,7 +271,7 @@ TEST(BPlusTreeTests, DeleteTest2) {
   auto header_page = bpm->NewPage(&page_id);
   (void)header_page;
 
-  std::vector<int64_t> keys = {1, 2, 3, 4, 5};
+  std::vector<int64_t> keys = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
   for (auto key : keys) {
     int64_t value = key & 0xFFFFFFFF;
     rid.Set(static_cast<int32_t>(key >> 32), value);
@@ -314,7 +314,7 @@ TEST(BPlusTreeTests, DeleteTest2) {
     tree.Remove(index_key, transaction);
   }
 
-  start_key = 2;
+  start_key = 6;
   current_key = start_key;
   int64_t size = 0;
   // for (auto pair : tree) {
@@ -329,11 +329,12 @@ TEST(BPlusTreeTests, DeleteTest2) {
     auto location = (*iterator).second;
     EXPECT_EQ(0, location.GetPageId());
     EXPECT_EQ(current_key, location.GetSlotNum());
+    LOG_INFO("%ld", (*iterator).first.ToString());
     current_key = current_key + 1;
     size = size + 1;
   }
 
-  EXPECT_EQ(size, 1);
+  EXPECT_EQ(size, 5);
 
   bpm->UnpinPage(HEADER_PAGE_ID, true);
   delete transaction;
@@ -432,6 +433,10 @@ TEST(BPlusTreeTests, ScaleTest) {
   //   (void)pair;
   //   size = size + 1;
   // }
+  for (auto iterator = tree.Begin(); !iterator.IsEnd(); ++iterator) {
+    size = size + 1;
+  }
+  EXPECT_EQ(size, 100);
   index_key.SetFromInteger(start_key);
   for (auto iterator = tree.Begin(index_key); !iterator.IsEnd(); ++iterator) {
     size = size + 1;
