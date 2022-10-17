@@ -70,7 +70,7 @@ auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::Insert(const KeyType &key, const ValueType 
     }
 
     // BaseAddr = array_+1
-    std::move_backward(array_+1 + index, array_+1 + size, array_+1 + size + 1);
+    std::move_backward(array_+index-1, array_+size, array_ + size + 1);
     array_[index] = std::make_pair(key, value);
     IncreaseSize(1);
     return true;
