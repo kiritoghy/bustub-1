@@ -260,6 +260,12 @@ void BPLUSTREE_TYPE::RemoveEntry(BPlusTreePage *b_plus_tree_page, const KeyType 
       buffer_pool_manager_->UnpinPage(old_page_id, true);
       buffer_pool_manager_->DeletePage(old_page_id);
       buffer_pool_manager_->UnpinPage(page->GetPageId(), true);
+    } else if (b_plus_page->GetSize() == 0) {
+      root_page_id_ = INVALID_PAGE_ID;
+      UpdateRootPageId(0);
+      auto old_page_id = b_plus_page->GetPageId();
+      buffer_pool_manager_->UnpinPage(old_page_id, true);
+      buffer_pool_manager_->DeletePage(old_page_id);
     } else {
       // 若是叶节点，则说明叶节点即是根节点，不用管。
       buffer_pool_manager_->UnpinPage(b_plus_page->GetPageId(), true);

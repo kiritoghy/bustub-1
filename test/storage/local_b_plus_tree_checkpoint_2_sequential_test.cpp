@@ -329,7 +329,6 @@ TEST(BPlusTreeTests, DeleteTest2) {
     auto location = (*iterator).second;
     EXPECT_EQ(0, location.GetPageId());
     EXPECT_EQ(current_key, location.GetSlotNum());
-    LOG_INFO("%ld", (*iterator).first.ToString());
     current_key = current_key + 1;
     size = size + 1;
   }
@@ -380,6 +379,7 @@ TEST(BPlusTreeTests, ScaleTest) {
   // NOTE: 'std::random_shuffle' has been removed in C++17; use 'std::shuffle' instead
   // std::shuffle(keys.begin(), keys.end(), std::mt19937(std::random_device()));
   auto rng = std::default_random_engine{};
+
   std::shuffle(keys.begin(), keys.end(), rng);
   for (auto key : keys) {
     int64_t value = key & 0xFFFFFFFF;
@@ -404,6 +404,7 @@ TEST(BPlusTreeTests, ScaleTest) {
   //   (void)pair;
   //   current_key = current_key + 1;
   // }
+  
   index_key.SetFromInteger(start_key);
   for (auto iterator = tree.Begin(index_key); !iterator.IsEnd(); ++iterator) {
     current_key = current_key + 1;
@@ -433,10 +434,6 @@ TEST(BPlusTreeTests, ScaleTest) {
   //   (void)pair;
   //   size = size + 1;
   // }
-  for (auto iterator = tree.Begin(); !iterator.IsEnd(); ++iterator) {
-    size = size + 1;
-  }
-  EXPECT_EQ(size, 100);
   index_key.SetFromInteger(start_key);
   for (auto iterator = tree.Begin(index_key); !iterator.IsEnd(); ++iterator) {
     size = size + 1;

@@ -141,7 +141,7 @@ auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::KeyIndex(const KeyType &key, const KeyCompa
   auto size = GetSize();
   int comp;
   for (; index < size; ++index) {
-    comp = comparator(key, array_[index].first) <= 0;
+    comp = comparator(key, array_[index].first);
     if (comp < 0) {
       return index - 1;
     }
