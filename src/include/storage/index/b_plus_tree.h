@@ -51,15 +51,16 @@ class BPlusTree {
   // Remove a key and its value from this B+ tree.
   void Remove(const KeyType &key, Transaction *transaction = nullptr);
 
-  template<typename BPlusTreePageType>
+  template <typename BPlusTreePageType>
   void RemoveEntry(BPlusTreePage *b_plus_tree_page, const KeyType &key);
 
-  template<typename BPlusTreePageType>
-  auto Redistribute(BPlusTreePage *b_plus_tree_page, BPlusTreePage *nei_b_plus_tree_page, InternalPage* b_plus_parent_page, int index) -> void;
+  template <typename BPlusTreePageType>
+  auto Redistribute(BPlusTreePage *b_plus_tree_page, BPlusTreePage *nei_b_plus_tree_page,
+                    InternalPage *b_plus_parent_page, int index) -> void;
 
-  template<typename BPlusTreePageType>
-  auto Coalesce(BPlusTreePage *b_plus_tree_page, BPlusTreePage *nei_b_plus_tree_page, InternalPage* b_plus_parent_page, int index) -> void;
-
+  template <typename BPlusTreePageType>
+  auto Coalesce(BPlusTreePage *b_plus_tree_page, BPlusTreePage *nei_b_plus_tree_page, InternalPage *b_plus_parent_page,
+                int index) -> void;
 
   // return the value associated with a given key
   auto GetValue(const KeyType &key, std::vector<ValueType> *result, Transaction *transaction = nullptr) -> bool;
@@ -85,6 +86,7 @@ class BPlusTree {
   void RemoveFromFile(const std::string &file_name, Transaction *transaction = nullptr);
 
   auto FindLeafPage(const KeyType &key) -> LeafPage *;
+
  private:
   void UpdateRootPageId(int insert_record = 0);
 
@@ -95,9 +97,9 @@ class BPlusTree {
 
   inline auto GetBPlusTreePage(page_id_t page_id) -> BPlusTreePage *;
 
-  auto FindSmallestLeafPage() -> LeafPage *; 
+  auto FindSmallestLeafPage() -> LeafPage *;
 
-  auto InsertInParent(BPlusTreePage *page, const KeyType &key, BPlusTreePage *new_page) -> bool;
+  auto InsertInParent(BPlusTreePage *b_plus_tree_page, const KeyType &key, BPlusTreePage *new_b_plus_tree_page) -> bool;
   // member variable
   std::string index_name_;
   page_id_t root_page_id_;

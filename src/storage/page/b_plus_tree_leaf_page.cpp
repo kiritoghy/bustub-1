@@ -108,7 +108,8 @@ auto B_PLUS_TREE_LEAF_PAGE_TYPE::Insert(const KeyType &key, const ValueType &val
 }
 
 INDEX_TEMPLATE_ARGUMENTS
-auto B_PLUS_TREE_LEAF_PAGE_TYPE::GetDataCopy(std::vector<MappingType> &data_copy, const KeyComparator &comparator) -> bool {
+auto B_PLUS_TREE_LEAF_PAGE_TYPE::GetDataCopy(std::vector<MappingType> &data_copy, const KeyComparator &comparator)
+    -> bool {
   int i = 0;
   int size = GetSize();
   // 找到插入位置
@@ -138,7 +139,8 @@ auto B_PLUS_TREE_LEAF_PAGE_TYPE::RemoveEntry(const KeyType &key, const KeyCompar
   }
   if (index == size) {
     return;
-  }else if (index < size - 1) {
+  }
+  if (index < size - 1) {
     std::move(array_ + index + 1, array_ + size, array_ + index);
   }
   IncreaseSize(-1);
@@ -151,7 +153,8 @@ auto B_PLUS_TREE_LEAF_PAGE_TYPE::ValueAt(int index) const -> ValueType {
 }
 
 INDEX_TEMPLATE_ARGUMENTS
-auto B_PLUS_TREE_LEAF_PAGE_TYPE::MoveFirstToEnd(B_PLUS_TREE_LEAF_PAGE_TYPE *b_plus_leaf_page, const KeyType &key) -> void {
+auto B_PLUS_TREE_LEAF_PAGE_TYPE::MoveFirstToEnd(B_PLUS_TREE_LEAF_PAGE_TYPE *b_plus_leaf_page, const KeyType &key)
+    -> void {
   auto size = b_plus_leaf_page->GetSize();
   b_plus_leaf_page->array_[size] = array_[0];
   b_plus_leaf_page->IncreaseSize(1);
@@ -159,12 +162,11 @@ auto B_PLUS_TREE_LEAF_PAGE_TYPE::MoveFirstToEnd(B_PLUS_TREE_LEAF_PAGE_TYPE *b_pl
   IncreaseSize(-1);
 }
 
-
 INDEX_TEMPLATE_ARGUMENTS
 auto B_PLUS_TREE_LEAF_PAGE_TYPE::MoveLastToFront(B_PLUS_TREE_LEAF_PAGE_TYPE *b, const KeyType &key) -> void {
   auto size = b->GetSize();
-  std::move_backward(b->array_, (b->array_)+size, (b->array_)+(size+1));
-  b->array_[0] = array_[GetSize()-1];
+  std::move_backward(b->array_, (b->array_) + size, (b->array_) + (size + 1));
+  b->array_[0] = array_[GetSize() - 1];
   b->IncreaseSize(1);
   IncreaseSize(-1);
 }
@@ -174,7 +176,7 @@ auto B_PLUS_TREE_LEAF_PAGE_TYPE::MoveTo(B_PLUS_TREE_LEAF_PAGE_TYPE *left, const 
   auto size = GetSize();
   auto l_size = left->GetSize();
   for (int i = 0; i < size; ++i) {
-    left->array_[l_size+i] = array_[i];
+    left->array_[l_size + i] = array_[i];
   }
   left->IncreaseSize(size);
   IncreaseSize(-size);

@@ -561,7 +561,7 @@ TEST(BPlusTreeConcurrentTest, DeleteTest2) {
  * insert different set of keys. Check if all old keys are
  * deleted and new keys are added correctly.
  */
-TEST(BPlusTreeConcurrentTest, DISABLED_MixTest1) {
+TEST(BPlusTreeConcurrentTest, MixTest1) {
   // TEST(BPlusTreeConcurrentTest, MixTest1) {
   TEST_TIMEOUT_BEGIN
   MixTest1Call();
@@ -579,7 +579,7 @@ TEST(BPlusTreeConcurrentTest, DISABLED_MixTest1) {
  * inserted.
  */
 // TEST(BPlusTreeConcurrentTest, MixTest2) {
-TEST(BPlusTreeConcurrentTest, DISABLED_MixTest2) {
+TEST(BPlusTreeConcurrentTest, MixTest2) {
   TEST_TIMEOUT_BEGIN
   MixTest2Call();
   remove("test.db");

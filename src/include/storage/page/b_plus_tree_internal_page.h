@@ -11,6 +11,7 @@
 #pragma once
 
 #include <queue>
+#include <vector>
 
 #include "storage/page/b_plus_tree_page.h"
 
@@ -45,12 +46,13 @@ class BPlusTreeInternalPage : public BPlusTreePage {
   auto Insert(const KeyType &key, const ValueType &value, const KeyComparator &comparator, int position = -1) -> bool;
   auto GetDataCopy(std::vector<MappingType> &data_copy, const KeyType &key, const ValueType &value,
                    const KeyComparator &comparator) -> bool;
-  auto CopyDataFrom(std::vector<MappingType> &data_copy, int frist, int last) -> void;
+  auto CopyDataFrom(std::vector<MappingType> &data_copy, int first, int last) -> void;
   auto RemoveEntry(const KeyType &key, const KeyComparator &comparator) -> void;
   auto KeyIndex(const KeyType &key, const KeyComparator &comparator) -> int;
   auto MoveFirstToEnd(B_PLUS_TREE_INTERNAL_PAGE_TYPE *b_plus_leaf_page, const KeyType &key) -> void;
-  auto MoveLastToFront(B_PLUS_TREE_INTERNAL_PAGE_TYPE *b_plus_leaf_page,const KeyType &key) -> void;
+  auto MoveLastToFront(B_PLUS_TREE_INTERNAL_PAGE_TYPE *b_plus_leaf_page, const KeyType &key) -> void;
   auto MoveTo(B_PLUS_TREE_INTERNAL_PAGE_TYPE *left, const KeyType &key) -> void;
+
  private:
   // Flexible array member for page data.
   MappingType array_[1];

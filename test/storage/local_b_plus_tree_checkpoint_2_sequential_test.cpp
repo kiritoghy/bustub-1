@@ -404,7 +404,7 @@ TEST(BPlusTreeTests, ScaleTest) {
   //   (void)pair;
   //   current_key = current_key + 1;
   // }
-  
+
   index_key.SetFromInteger(start_key);
   for (auto iterator = tree.Begin(index_key); !iterator.IsEnd(); ++iterator) {
     current_key = current_key + 1;
