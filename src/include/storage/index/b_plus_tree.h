@@ -34,8 +34,6 @@ namespace bustub {
  * (4) Implement index iterator for range scan
  */
 
-using OperType = enum {READ, INSERT, DELETE};
-
 INDEX_TEMPLATE_ARGUMENTS
 class BPlusTree {
   using InternalPage = BPlusTreeInternalPage<KeyType, page_id_t, KeyComparator>;
@@ -98,7 +96,8 @@ class BPlusTree {
 
   void ToString(BPlusTreePage *page, BufferPoolManager *bpm) const;
 
-  inline auto GetBPlusTreePage(page_id_t page_id, OperType op = OperType::READ, Transaction *transaction = nullptr) -> BPlusTreePage *;
+  inline auto GetBPlusTreePage(page_id_t page_id, OperType op = OperType::READ, page_id_t pre_page_id,
+                               Transaction *transaction = nullptr) -> BPlusTreePage *;
 
   auto FindSmallestLeafPage(Transaction *transaction = nullptr) -> LeafPage *;
 
@@ -113,12 +112,12 @@ class BPlusTree {
 
   auto Unlock(Page *page, OperType op) -> void;
 
-  auto FreePagesInTransaction(OperType op, page_id_t pre_page_id) -> void;
+  auto FreePagesInTransaction(OperType op, Transaction *transaction, page_id_t cur) -> void;
 
   // auto Lock(Page *page, OperType op) -> void;
   // member variable
   ReaderWriterLatch root_latch_;
-  int root_latch_cnt_;
+  static thread_local int root_latch_cnt_;
   std::string index_name_;
   page_id_t root_page_id_;
   BufferPoolManager *buffer_pool_manager_;
