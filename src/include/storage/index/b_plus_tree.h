@@ -33,6 +33,9 @@ namespace bustub {
  * (3) The structure should shrink and grow dynamically
  * (4) Implement index iterator for range scan
  */
+
+using OperType = enum {READ, INSERT, DELETE};
+
 INDEX_TEMPLATE_ARGUMENTS
 class BPlusTree {
   using InternalPage = BPlusTreeInternalPage<KeyType, page_id_t, KeyComparator>;
@@ -85,7 +88,7 @@ class BPlusTree {
   // read data from file and remove one by one
   void RemoveFromFile(const std::string &file_name, Transaction *transaction = nullptr);
 
-  auto FindLeafPage(const KeyType &key) -> LeafPage *;
+  auto FindLeafPage(const KeyType &key, OperType op = OperType::READ, Transaction *transaction = nullptr) -> LeafPage *;
 
  private:
   void UpdateRootPageId(int insert_record = 0);
@@ -95,12 +98,27 @@ class BPlusTree {
 
   void ToString(BPlusTreePage *page, BufferPoolManager *bpm) const;
 
-  inline auto GetBPlusTreePage(page_id_t page_id) -> BPlusTreePage *;
+  inline auto GetBPlusTreePage(page_id_t page_id, OperType op = OperType::READ, Transaction *transaction = nullptr) -> BPlusTreePage *;
 
-  auto FindSmallestLeafPage() -> LeafPage *;
+  auto FindSmallestLeafPage(Transaction *transaction = nullptr) -> LeafPage *;
 
   auto InsertInParent(BPlusTreePage *b_plus_tree_page, const KeyType &key, BPlusTreePage *new_b_plus_tree_page) -> bool;
+
+  // Concurrent Index
+  auto LockRoot(OperType op) -> void;
+
+  auto TryUnlockRoot(OperType op) -> void;
+
+  auto Lock(Page *page, OperType op) -> void;
+
+  auto Unlock(Page *page, OperType op) -> void;
+
+  auto FreePagesInTransaction(OperType op, page_id_t pre_page_id) -> void;
+
+  // auto Lock(Page *page, OperType op) -> void;
   // member variable
+  ReaderWriterLatch root_latch_;
+  int root_latch_cnt_;
   std::string index_name_;
   page_id_t root_page_id_;
   BufferPoolManager *buffer_pool_manager_;

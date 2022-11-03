@@ -10,7 +10,8 @@ namespace bustub {
 INDEX_TEMPLATE_ARGUMENTS
 BPLUSTREE_TYPE::BPlusTree(std::string name, BufferPoolManager *buffer_pool_manager, const KeyComparator &comparator,
                           int leaf_max_size, int internal_max_size)
-    : index_name_(std::move(name)),
+    : root_latch_cnt_(0),
+      index_name_(std::move(name)),
       root_page_id_(INVALID_PAGE_ID),
       buffer_pool_manager_(buffer_pool_manager),
       comparator_(comparator),
@@ -24,16 +25,17 @@ INDEX_TEMPLATE_ARGUMENTS
 auto BPLUSTREE_TYPE::IsEmpty() const -> bool { return root_page_id_ == INVALID_PAGE_ID; }
 
 INDEX_TEMPLATE_ARGUMENTS
-inline auto BPLUSTREE_TYPE::GetBPlusTreePage(page_id_t page_id) -> BPlusTreePage * {
+inline auto BPLUSTREE_TYPE::GetBPlusTreePage(page_id_t page_id, OperType op, Transaction *transaction) -> BPlusTreePage * {
   Page *page = buffer_pool_manager_->FetchPage(page_id);
   BUSTUB_ASSERT(page != nullptr, "Fetch page failed in BPlusTree.");
+  Lock(page, op);
   auto b_plus_tree_page = reinterpret_cast<BPlusTreePage *>(page->GetData());
   return b_plus_tree_page;
 }
 
 INDEX_TEMPLATE_ARGUMENTS
-auto BPLUSTREE_TYPE::FindLeafPage(const KeyType &key) -> LeafPage * {
-  auto b_plus_tree_page = GetBPlusTreePage(root_page_id_);
+auto BPLUSTREE_TYPE::FindLeafPage(const KeyType &key, OperType op, Transaction *transaction) -> LeafPage * {
+  auto b_plus_tree_page = GetBPlusTreePage(root_page_id_, op, transaction);
 
   // 非叶节点
   while (!b_plus_tree_page->IsLeafPage()) {
@@ -58,8 +60,10 @@ auto BPLUSTREE_TYPE::FindLeafPage(const KeyType &key) -> LeafPage * {
       // key == k_i then find in P_i
     }
     auto page_id = b_plus_internal_page->ValueAt(index);
-    buffer_pool_manager_->UnpinPage(b_plus_internal_page->GetPageId(), false);
+    auto pre_page_id = b_plus_internal_page->GetPageId();
+    // buffer_pool_manager_->UnpinPage(b_plus_internal_page->GetPageId(), false);
     b_plus_tree_page = GetBPlusTreePage(page_id);
+    // free_page
   }
 
   // 叶子节点
@@ -149,11 +153,13 @@ auto BPLUSTREE_TYPE::InsertInParent(BPlusTreePage *b_plus_tree_page, const KeyTy
 INDEX_TEMPLATE_ARGUMENTS
 auto BPLUSTREE_TYPE::GetValue(const KeyType &key, std::vector<ValueType> *result, Transaction *transaction) -> bool {
   // 当B+树为空
+  LockRoot(OperType::READ);
   if (root_page_id_ == INVALID_PAGE_ID) {
+    TryUnlockRoot(OperType::READ);
     return false;
   }
 
-  auto b_plus_leaf_page = FindLeafPage(key);
+  auto b_plus_leaf_page = FindLeafPage(key, OperType::READ, transaction);
   auto res = b_plus_leaf_page->GetValue(key, result, comparator_);
   buffer_pool_manager_->UnpinPage(b_plus_leaf_page->GetPageId(), false);
   return res;
@@ -371,7 +377,7 @@ auto BPLUSTREE_TYPE::Coalesce(BPlusTreePage *b_plus_tree_page, BPlusTreePage *ne
 }
 
 INDEX_TEMPLATE_ARGUMENTS
-auto BPLUSTREE_TYPE::FindSmallestLeafPage() -> LeafPage * {
+auto BPLUSTREE_TYPE::FindSmallestLeafPage(Transaction *transaction) -> LeafPage * {
   auto b_plus_tree_page = GetBPlusTreePage(root_page_id_);
 
   while (!b_plus_tree_page->IsLeafPage()) {
@@ -652,6 +658,46 @@ void BPLUSTREE_TYPE::ToString(BPlusTreePage *page, BufferPoolManager *bpm) const
   bpm->UnpinPage(page->GetPageId(), false);
 }
 
+INDEX_TEMPLATE_ARGUMENTS
+auto BPLUSTREE_TYPE::LockRoot(OperType op) -> void {
+  if (op == OperType::READ) {
+    root_latch_.RLock();
+  } else {
+    root_latch_.WLock();
+  }
+  root_latch_cnt_++;
+}
+
+INDEX_TEMPLATE_ARGUMENTS
+auto BPLUSTREE_TYPE::TryUnlockRoot(OperType op) -> void {
+  if (root_latch_cnt_ > 0) {
+    root_latch_cnt_--;
+    if (op == OperType::READ) {
+      root_latch_.RUnlock();
+    } else {
+      root_latch_.WUnlock();
+    }
+  }
+}
+
+
+INDEX_TEMPLATE_ARGUMENTS
+auto BPLUSTREE_TYPE::Lock(Page *page, OperType op) -> void {
+  if (op == OperType::READ) {
+    page->RLatch();
+  } else {
+    page->WLatch();
+  }
+}
+
+INDEX_TEMPLATE_ARGUMENTS
+auto BPLUSTREE_TYPE::Unlock(Page *page, OperType op) -> void {
+  if (op == OperType::READ) {
+    page->RUnlatch();
+  } else {
+    page->WUnlatch();
+  }
+}
 // INDEX_TEMPLATE_ARGUMENTS
 // void BPLUSTREE_TYPE::RemoveEntry(BPlusTreePage *b_plus_tree_page, const KeyType &key) {
 //   if (b_plus_tree_page->IsLeafPage()) {
