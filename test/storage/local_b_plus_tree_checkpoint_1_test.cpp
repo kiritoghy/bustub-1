@@ -54,7 +54,7 @@ TEST(BPlusTreeTests, SplitTest) {
     EXPECT_EQ(false, tree.Insert(index_key, rid, transaction));
   }
   index_key.SetFromInteger(1);
-  auto leaf_node = tree.FindLeafPage(index_key);
+  auto leaf_node = tree.FindLeafPage(index_key, OperType::READ, transaction);
   ASSERT_NE(nullptr, leaf_node);
   // auto leaf_node =
   //     reinterpret_cast<BPlusTreeLeafPage<GenericKey<8>, RID, GenericComparator<8>> *>(leaf_page->GetData());
@@ -156,7 +156,11 @@ TEST(BPlusTreeTests, InsertTest2) {
   ASSERT_EQ(page_id, HEADER_PAGE_ID);
   (void)header_page;
 
-  std::vector<int64_t> keys = {5, 4, 3, 2, 1};
+  // std::vector<int64_t> keys = {5, 4, 3, 2, 1};
+  std::vector<int64_t> keys;
+  for (int i = 1; i < 100; ++i) {
+    keys.push_back(i);
+  }
   for (auto key : keys) {
     int64_t value = key & 0xFFFFFFFF;
     rid.Set(static_cast<int32_t>(key >> 32), value);
@@ -225,7 +229,9 @@ TEST(BPlusTreeTests, ScaleTest) {
   }
 
   std::vector<RID> rids;
+  int i = 0;
   for (auto key : keys) {
+    i++;
     rids.clear();
     index_key.SetFromInteger(key);
     tree.GetValue(index_key, &rids);

@@ -129,7 +129,7 @@ auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::RemoveEntry(const KeyType &key, const KeyCo
   if (index == size) {
     // key doesn't exits;
     return;
-  }  
+  }
   if (index < size - 1) {
     std::move(array_ + index + 1, array_ + size, array_ + index);
   }

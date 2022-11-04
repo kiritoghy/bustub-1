@@ -13,6 +13,7 @@
 #include <sstream>
 
 #include "common/exception.h"
+#include "common/logger.h"
 #include "common/rid.h"
 #include "storage/page/b_plus_tree_leaf_page.h"
 
@@ -58,7 +59,8 @@ auto B_PLUS_TREE_LEAF_PAGE_TYPE::KeyAt(int index) const -> KeyType {
 
 INDEX_TEMPLATE_ARGUMENTS
 auto B_PLUS_TREE_LEAF_PAGE_TYPE::GetKV(int index) -> const MappingType & {
-  BUSTUB_ASSERT(index < GetSize(), "wrong index in leaf Get KV_pair");
+  // LOG_INFO("current_index_: %d, size:%d", index, GetSize());
+  // BUSTUB_ASSERT(index < GetSize(), "wrong index in leaf Get KV_pair");
   return array_[index];
 }
 

@@ -3,6 +3,7 @@
  */
 #include <cassert>
 
+#include "common/logger.h"
 #include "storage/index/index_iterator.h"
 
 namespace bustub {
@@ -31,6 +32,7 @@ auto INDEXITERATOR_TYPE::IsEnd() -> bool { return is_end_; }
 INDEX_TEMPLATE_ARGUMENTS
 auto INDEXITERATOR_TYPE::operator*() -> const MappingType & {
   BUSTUB_ASSERT(!IsEnd(), "Trying to access interator.end()");
+  // LOG_INFO("current_index_: %d", current_index_);
   return current_leaf_page_->GetKV(current_index_);
 }
 
@@ -43,6 +45,9 @@ auto INDEXITERATOR_TYPE::operator++() -> INDEXITERATOR_TYPE & {
   }
 
   auto next_page_id = current_leaf_page_->GetNextPageId();
+  auto page = buffer_pool_manager_->FetchPage(current_leaf_page_->GetPageId());
+  page->RUnlatch();
+  buffer_pool_manager_->UnpinPage(current_leaf_page_->GetPageId(), false);
   if (next_page_id == INVALID_PAGE_ID) {
     is_end_ = true;
     buffer_pool_manager_->UnpinPage(current_leaf_page_->GetPageId(), false);
@@ -51,9 +56,11 @@ auto INDEXITERATOR_TYPE::operator++() -> INDEXITERATOR_TYPE & {
   }
 
   buffer_pool_manager_->UnpinPage(current_leaf_page_->GetPageId(), false);
-  auto page = buffer_pool_manager_->FetchPage(next_page_id);
-  BUSTUB_ASSERT(page != nullptr, "Fetch page failed.");
-  current_leaf_page_ = reinterpret_cast<LeafPage *>(page->GetData());
+  auto new_page = buffer_pool_manager_->FetchPage(next_page_id);
+  BUSTUB_ASSERT(new_page != nullptr, "Fetch page failed.");
+  new_page->RLatch();
+  current_leaf_page_ = reinterpret_cast<LeafPage *>(new_page->GetData());
+  // LOG_INFO("next_current_leaf_page size:%d", current_leaf_page_->GetSize());
   current_index_ = 0;
   return *this;
 }
@@ -63,7 +70,8 @@ auto INDEXITERATOR_TYPE::operator==(const IndexIterator &itr) const -> bool {
   if (is_end_ && itr.is_end_) {
     return true;
   }
-  return !(is_end_ != itr.is_end_ || current_leaf_page_ != itr.current_leaf_page_ || current_index_ != itr.current_index_);
+  return !(is_end_ != itr.is_end_ || current_leaf_page_ != itr.current_leaf_page_ ||
+           current_index_ != itr.current_index_);
 }
 
 INDEX_TEMPLATE_ARGUMENTS

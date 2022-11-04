@@ -63,7 +63,7 @@ class BPlusTreePage {
 
   void SetLSN(lsn_t lsn = INVALID_LSN);
 
-  bool IsSafe(OperType op);
+  auto IsSafe(OperType op) -> bool;
 
  private:
   // member variable, attributes that both internal and leaf page share
