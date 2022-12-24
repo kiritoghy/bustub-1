@@ -32,6 +32,9 @@ void InsertExecutor::Init() {
 }
 
 auto InsertExecutor::Next([[maybe_unused]] Tuple *tuple, RID *rid) -> bool {
+  if (is_inserted_) {
+    return false;
+  }
   int rows = 0;
   while (child_executor_->Next(tuple, rid)) {
     if (table_info_->table_->InsertTuple(*tuple, rid, exec_ctx_->GetTransaction())) {
@@ -50,12 +53,8 @@ auto InsertExecutor::Next([[maybe_unused]] Tuple *tuple, RID *rid) -> bool {
   }
   Value value(TypeId::INTEGER, rows);
   *tuple = Tuple({value}, &GetOutputSchema());
-  if (is_inserted_) {
-    return false;
-  } else {
-    is_inserted_ = true;
-    return true;
-  }
+  is_inserted_ = true;
+  return true;
 }
 
 }  // namespace bustub
