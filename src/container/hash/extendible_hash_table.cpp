@@ -130,7 +130,8 @@ void ExtendibleHashTable<K, V>::Insert(const K &key, const V &value) {
   }
 
   assert(!dir_[index]->IsFull());
-  assert(dir_[index]->Insert(key, value));
+  // assert(dir_[index]->Insert(key, value));
+  dir_[index]->Insert(key, value);
 }
 
 template <typename K, typename V>
