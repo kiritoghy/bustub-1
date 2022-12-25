@@ -33,7 +33,7 @@ void AggregationExecutor::Init() {
     aht_.InsertCombine(MakeAggregateKey(&tuple), MakeAggregateValue(&tuple));
     rows++;
   }
-  if (rows == 0) {
+  if (rows == 0 && plan_->GetGroupBys().size() == 0) {
     aht_.InitWithEmptyTable(MakeAggregateKey(&tuple));
   }
   aht_iterator_ = aht_.Begin();
@@ -42,7 +42,15 @@ void AggregationExecutor::Init() {
 auto AggregationExecutor::Next(Tuple *tuple, RID *rid) -> bool {
   auto aht_itertor_end = aht_.End();
   while (aht_iterator_ != aht_itertor_end) {
-    *tuple = Tuple(aht_iterator_.Val().aggregates_, &GetOutputSchema());
+    std::vector<Value> res;
+    res.reserve(GetOutputSchema().GetColumnCount());
+    for (auto &key_val : aht_iterator_.Key().group_bys_) {
+      res.emplace_back(key_val);
+    }
+    for (auto &val : aht_iterator_.Val().aggregates_) {
+      res.emplace_back(val);
+    }
+    *tuple = Tuple(res, &GetOutputSchema());
     ++aht_iterator_;
     *rid = tuple->GetRid();
     return true;
