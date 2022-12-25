@@ -42,7 +42,7 @@ auto InsertExecutor::Next([[maybe_unused]] Tuple *tuple, RID *rid) -> bool {
       auto index_infos = exec_ctx_->GetCatalog()->GetTableIndexes(table_info_->name_);
       for (auto &index_info : index_infos) {
         index_info->index_->InsertEntry(
-            tuple->KeyFromTuple(GetOutputSchema(), index_info->key_schema_, index_info->index_->GetKeyAttrs()), *rid,
+            tuple->KeyFromTuple(table_info_->schema_, index_info->key_schema_, index_info->index_->GetKeyAttrs()), *rid,
             exec_ctx_->GetTransaction());
       }
     } else {
