@@ -46,8 +46,8 @@ create table t1(v1 int);
 statement ok
 insert into t1 (select * from __mock_table_123);
 
-# statement ok
-# create index t1_v1 on t1(v1);
+statement ok
+create index t1_v1 on t1(v1);
 
 query rowsort
 select * from test_simple_seq_2 t2 left join t1 on t1.v1 = t2.col1;

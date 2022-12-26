@@ -50,16 +50,9 @@ auto NestedLoopJoinExecutor::Next(Tuple *tuple, RID *rid) -> bool {
     if (!left_executor_->Next(&left_tuple_, rid)) {
       return false;
     }
-    // LOG_DEBUG("fetch left tuple");
   }
-  // LOG_DEBUG("right tuple index:%d", right_tuple_index_);
   do {
-    // LOG_DEBUG("right tuple size:%zu", right_tuples_.size());
     for (; right_tuple_index_ < right_tuples_.size(); ++right_tuple_index_) {
-      // LOG_DEBUG("right tuple index:%d", right_tuple_index_);
-      // LOG_DEBUG("left tuple:%s", left_tuple_.ToString(&left_executor_->GetOutputSchema()).c_str());
-      // LOG_DEBUG("right tuple:%s",
-      //           right_tuples_[right_tuple_index_].ToString(&right_executor_->GetOutputSchema()).c_str());
       auto res =
           plan_->Predicate().EvaluateJoin(&left_tuple_, left_executor_->GetOutputSchema(),
                                           &right_tuples_[right_tuple_index_], right_executor_->GetOutputSchema());
@@ -74,7 +67,6 @@ auto NestedLoopJoinExecutor::Next(Tuple *tuple, RID *rid) -> bool {
         }
         *tuple = Tuple(res, &GetOutputSchema());
         *rid = tuple->GetRid();
-        // LOG_DEBUG("successful combine");
         ++right_tuple_index_;
         is_joined_ = true;
         return true;
@@ -87,8 +79,6 @@ auto NestedLoopJoinExecutor::Next(Tuple *tuple, RID *rid) -> bool {
         res.emplace_back(left_tuple_.GetValue(&left_executor_->GetOutputSchema(), i));
       }
       for (uint32_t i = 0; i < right_executor_->GetOutputSchema().GetColumnCount(); ++i) {
-        // Value value(Value(right_executor_->GetOutputSchema().GetColumn(i).GetType()));
-        // value = value.OperateNull(value);
         res.emplace_back(ValueFactory::GetNullValueByType(right_executor_->GetOutputSchema().GetColumn(i).GetType()));
       }
       *tuple = Tuple(res, &GetOutputSchema());
