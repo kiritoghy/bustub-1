@@ -19,15 +19,14 @@ void TopNExecutor::Init() {
       auto res = val1.CompareEquals(val2);
       if (res == CmpBool::CmpTrue) {
         continue;
-      } else if (res == CmpBool::CmpFalse) {
+      }
+      if (res == CmpBool::CmpFalse) {
         if (order_type == OrderByType::ASC || order_type == OrderByType::DEFAULT) {
           return val1.CompareLessThan(val2) == CmpBool::CmpTrue;
-        } else {
-          return val1.CompareGreaterThan(val2) == CmpBool::CmpTrue;
         }
-      } else {
-        return false;
+        return val1.CompareGreaterThan(val2) == CmpBool::CmpTrue;
       }
+      return false;
     }
     return false;
   };

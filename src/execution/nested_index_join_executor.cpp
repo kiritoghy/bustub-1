@@ -56,7 +56,8 @@ auto NestIndexJoinExecutor::Next(Tuple *tuple, RID *rid) -> bool {
       *tuple = Tuple(res, &GetOutputSchema());
       *rid = tuple->GetRid();
       return true;
-    } else if (plan_->GetJoinType() == JoinType::LEFT) {
+    }
+    if (plan_->GetJoinType() == JoinType::LEFT) {
       res.reserve(GetOutputSchema().GetColumnCount());
       for (uint32_t i = 0; i < child_executor_->GetOutputSchema().GetColumnCount(); ++i) {
         res.emplace_back(outer_tuple.GetValue(&child_executor_->GetOutputSchema(), i));

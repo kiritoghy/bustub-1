@@ -33,7 +33,7 @@ void AggregationExecutor::Init() {
     aht_.InsertCombine(MakeAggregateKey(&tuple), MakeAggregateValue(&tuple));
     rows++;
   }
-  if (rows == 0 && plan_->GetGroupBys().size() == 0) {
+  if (rows == 0 && plan_->GetGroupBys().empty()) {
     aht_.InitWithEmptyTable(MakeAggregateKey(&tuple));
   }
   aht_iterator_ = aht_.Begin();

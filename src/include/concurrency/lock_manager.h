@@ -64,7 +64,7 @@ class LockManager {
   class LockRequestQueue {
    public:
     /** List of lock requests for the same resource (table or row) */
-    std::list<LockRequest *> request_queue_;
+    std::list<std::shared_ptr<LockRequest>> request_queue_;
     /** For notifying blocked transactions on this rid */
     std::condition_variable cv_;
     /** txn_id of an upgrading transaction (if any) */
@@ -298,6 +298,13 @@ class LockManager {
   auto RunCycleDetection() -> void;
 
  private:
+  auto CheckCompability(LockMode lock_mode1, LockMode lock_mode2) -> bool;
+  auto GrantLock(Transaction *txn, LockMode lock_mode, const table_oid_t &oid) -> bool;
+  auto GrantLock(Transaction *txn, LockMode lock_mode, const table_oid_t &oid, const RID &rid) -> bool;
+  auto InsertIntoTransactionTableLockSet(Transaction *txn, LockMode lock_mode, const table_oid_t &oid) -> void;
+  auto InsertIntoTransactionRowLockSet(Transaction *txn, LockMode lock_mode, const table_oid_t &oid, const RID &rid)
+      -> void;
+
   /** Fall 2022 */
   /** Structure that holds lock requests for a given table oid */
   std::unordered_map<table_oid_t, std::shared_ptr<LockRequestQueue>> table_lock_map_;
