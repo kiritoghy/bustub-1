@@ -332,7 +332,7 @@ TEST(LockManagerTest, CompatibilityTest) {
   }
 }
 
-TEST(LockManagerTest, DISABLED_AbortTest1) {
+TEST(LockManagerTest, AbortTest1) {
   LockManager lock_mgr{};
   TransactionManager txn_mgr{&lock_mgr};
   table_oid_t oid = 0;
@@ -345,7 +345,7 @@ TEST(LockManagerTest, DISABLED_AbortTest1) {
     bool res;
     res = lock_mgr.LockTable(txn0, LockManager::LockMode::EXCLUSIVE, oid);
     EXPECT_TRUE(res);
-    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
     lock_mgr.UnlockTable(txn0, oid);
     txn_mgr.Commit(txn0);
     EXPECT_EQ(TransactionState::COMMITTED, txn0->GetState());
