@@ -152,7 +152,7 @@ auto LockManager::LockTable(Transaction *txn, LockMode lock_mode, const table_oi
   while (!GrantLock(txn, lock_mode, oid)) {
     lock_request_queue->cv_.wait(lock3);
   }
-  // LOG_INFO("txn:%d lock table %d", txn->GetTransactionId(), oid);
+  LOG_INFO("txn:%d lock table %d", txn->GetTransactionId(), oid);
   return true;
 }
 auto LockManager::UnlockTable(Transaction *txn, const table_oid_t &oid) -> bool {
@@ -164,11 +164,11 @@ auto LockManager::UnlockTable(Transaction *txn, const table_oid_t &oid) -> bool 
 
   // check if all row locks are released
   if ((txn->GetSharedRowLockSet()->find(oid) != txn->GetSharedRowLockSet()->end() &&
-       txn->GetSharedRowLockSet()->find(oid)->second.empty()) ||
+       !txn->GetSharedRowLockSet()->find(oid)->second.empty()) ||
       (txn->GetExclusiveRowLockSet()->find(oid) != txn->GetExclusiveRowLockSet()->end() &&
        !txn->GetExclusiveRowLockSet()->find(oid)->second.empty())) {
     txn->SetState(TransactionState::ABORTED);
-    // LOG_INFO("transaction %d is aborted", txn->GetTransactionId());
+    LOG_INFO("transaction %d is aborted", txn->GetTransactionId());
     throw TransactionAbortException(txn->GetTransactionId(), AbortReason::TABLE_LOCK_NOT_PRESENT);
     return false;
   }
@@ -178,7 +178,7 @@ auto LockManager::UnlockTable(Transaction *txn, const table_oid_t &oid) -> bool 
   if (it == table_lock_map_.end()) {
     // no lock on the table
     txn->SetState(TransactionState::ABORTED);
-    // LOG_INFO("transaction %d is aborted", txn->GetTransactionId());
+    LOG_INFO("transaction %d is aborted", txn->GetTransactionId());
     throw TransactionAbortException(txn->GetTransactionId(), AbortReason::TABLE_LOCK_NOT_PRESENT);
     return false;
   }
@@ -224,7 +224,7 @@ auto LockManager::UnlockTable(Transaction *txn, const table_oid_t &oid) -> bool 
   txn->UnlockTxn();
 
   lock_request_queue->cv_.notify_all();
-  // LOG_INFO("txn:%d unlock table %d", txn->GetTransactionId(), oid);
+  LOG_INFO("txn:%d unlock table %d", txn->GetTransactionId(), oid);
   return true;
 }
 
@@ -237,7 +237,7 @@ auto LockManager::LockRow(Transaction *txn, LockMode lock_mode, const table_oid_
   // Row locking should not support Intention locks.
   if (lock_mode == LockMode::SHARED_INTENTION_EXCLUSIVE || lock_mode == LockMode::INTENTION_EXCLUSIVE ||
       lock_mode == LockMode::INTENTION_SHARED) {
-    // LOG_INFO("txn: %d ATTEMPTED_INTENTION_LOCK_ON_ROW", txn->GetTransactionId());
+    LOG_INFO("txn: %d ATTEMPTED_INTENTION_LOCK_ON_ROW", txn->GetTransactionId());
     txn->SetState(TransactionState::ABORTED);
     throw TransactionAbortException(txn->GetTransactionId(), AbortReason::ATTEMPTED_INTENTION_LOCK_ON_ROW);
     return false;
@@ -246,7 +246,7 @@ auto LockManager::LockRow(Transaction *txn, LockMode lock_mode, const table_oid_
   if (lock_mode == LockMode::EXCLUSIVE) {
     if (!txn->IsTableExclusiveLocked(oid) && !txn->IsTableIntentionExclusiveLocked(oid) &&
         !txn->IsTableSharedIntentionExclusiveLocked(oid)) {
-      // LOG_INFO("txn %d TABLE_LOCK_NOT_PRESENT", txn->GetTransactionId());
+      LOG_INFO("txn %d TABLE_LOCK_NOT_PRESENT", txn->GetTransactionId());
       txn->SetState(TransactionState::ABORTED);
       throw TransactionAbortException(txn->GetTransactionId(), AbortReason::TABLE_LOCK_NOT_PRESENT);
       return false;
@@ -257,7 +257,7 @@ auto LockManager::LockRow(Transaction *txn, LockMode lock_mode, const table_oid_
     if (!txn->IsTableIntentionSharedLocked(oid) && !txn->IsTableSharedLocked(oid) &&
         !txn->IsTableExclusiveLocked(oid) && !txn->IsTableIntentionExclusiveLocked(oid) &&
         !txn->IsTableSharedIntentionExclusiveLocked(oid)) {
-      // LOG_INFO("txn %d TABLE_LOCK_NOT_PRESENT", txn->GetTransactionId());
+      LOG_INFO("txn %d TABLE_LOCK_NOT_PRESENT", txn->GetTransactionId());
       txn->SetState(TransactionState::ABORTED);
       throw TransactionAbortException(txn->GetTransactionId(), AbortReason::TABLE_LOCK_NOT_PRESENT);
       return false;
@@ -348,7 +348,7 @@ auto LockManager::LockRow(Transaction *txn, LockMode lock_mode, const table_oid_
   while (!GrantLock(txn, lock_mode, oid, rid)) {
     lock_request_queue->cv_.wait(lock3);
   }
-  // LOG_INFO("txn%d lock row", txn->GetTransactionId());
+  LOG_INFO("txn%d lock row", txn->GetTransactionId());
   return true;
 }
 
@@ -473,7 +473,7 @@ auto LockManager::UnlockRow(Transaction *txn, const table_oid_t &oid, const RID 
   }
 
   lock_request_queue->cv_.notify_all();
-  // LOG_INFO("txn:%d unlock row", txn->GetTransactionId());
+  LOG_INFO("txn:%d unlock row", txn->GetTransactionId());
   return true;
 }
 
