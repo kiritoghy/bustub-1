@@ -430,12 +430,25 @@ auto LockManager::LockRow(Transaction *txn, LockMode lock_mode, const table_oid_
 auto LockManager::GrantLock(Transaction *txn, LockMode lock_mode, const table_oid_t &oid, const RID &rid) -> bool {
   LOG_INFO("txn%d try grant row lock", txn->GetTransactionId());
   if (txn->GetState() == TransactionState::ABORTED) {
-    for (auto iter = row_lock_map_[rid]->request_queue_.begin(); iter != row_lock_map_[rid]->request_queue_.end();
-         ++iter) {
-      if (iter->get()->txn_id_ == txn->GetTransactionId()) {
-        iter = table_lock_map_[oid]->request_queue_.erase(iter);
-      }
-    }
+    // for (auto iter = row_lock_map_[rid]->request_queue_.begin(); iter != row_lock_map_[rid]->request_queue_.end();
+    //      ++iter) {
+    //   if (iter->get()->txn_id_ == txn->GetTransactionId()) {
+    //     // if (iter->get()->granted_) {
+    //     //   if (iter->get()->lock_mode_ == LockMode::EXCLUSIVE) {
+    //     //     auto it = txn->GetExclusiveRowLockSet()->find(oid);
+    //     //     if (it != txn->GetExclusiveRowLockSet()->end()) {
+    //     //       it->second.erase(rid);
+    //     //     }
+    //     //   } else {
+    //     //     auto it = txn->GetSharedRowLockSet()->find(oid);
+    //     //     if (it != txn->GetSharedRowLockSet()->end()) {
+    //     //       it->second.erase(rid);
+    //     //     }
+    //     //   }
+    //     // }
+    //     iter = row_lock_map_[rid]->request_queue_.erase(iter);
+    //   }
+    // }
     // table_lock_map_[oid]->cv_.notify_all();
     if (row_lock_map_[rid]->upgrading_ == txn->GetTransactionId()) {
       row_lock_map_[rid]->upgrading_ = INVALID_TXN_ID;
@@ -607,6 +620,19 @@ auto LockManager::GrantLock(Transaction *txn, LockMode lock_mode, const table_oi
     for (auto iter = table_lock_map_[oid]->request_queue_.begin(); iter != table_lock_map_[oid]->request_queue_.end();
          ++iter) {
       if (iter->get()->txn_id_ == txn->GetTransactionId()) {
+        if (iter->get()->granted_) {
+          if (iter->get()->lock_mode_ == LockMode::SHARED) {
+            txn->GetSharedTableLockSet()->erase(oid);
+          } else if (iter->get()->lock_mode_ == LockMode::EXCLUSIVE) {
+            txn->GetExclusiveTableLockSet()->erase(oid);
+          } else if (iter->get()->lock_mode_ == LockMode::INTENTION_SHARED) {
+            txn->GetIntentionSharedTableLockSet()->erase(oid);
+          } else if (iter->get()->lock_mode_ == LockMode::INTENTION_EXCLUSIVE) {
+            txn->GetIntentionExclusiveTableLockSet()->erase(oid);
+          } else if (iter->get()->lock_mode_ == LockMode::SHARED_INTENTION_EXCLUSIVE) {
+            txn->GetSharedIntentionExclusiveTableLockSet()->erase(oid);
+          }
+        }
         iter = table_lock_map_[oid]->request_queue_.erase(iter);
       }
     }
