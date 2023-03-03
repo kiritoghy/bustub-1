@@ -15,8 +15,11 @@
 #include <algorithm>
 #include <condition_variable>  // NOLINT
 #include <list>
+#include <map>
 #include <memory>
 #include <mutex>  // NOLINT
+#include <set>
+#include <stack>
 #include <unordered_map>
 #include <unordered_set>
 #include <utility>
@@ -298,12 +301,16 @@ class LockManager {
   auto RunCycleDetection() -> void;
 
  private:
+  auto DFS(txn_id_t txn_id, std::vector<txn_id_t> &visited, std::vector<txn_id_t> &rec_stack, std::stack<txn_id_t> &s)
+      -> bool;
   auto CheckCompability(LockMode lock_mode1, LockMode lock_mode2) -> bool;
   auto GrantLock(Transaction *txn, LockMode lock_mode, const table_oid_t &oid) -> bool;
   auto GrantLock(Transaction *txn, LockMode lock_mode, const table_oid_t &oid, const RID &rid) -> bool;
   auto InsertIntoTransactionTableLockSet(Transaction *txn, LockMode lock_mode, const table_oid_t &oid) -> void;
   auto InsertIntoTransactionRowLockSet(Transaction *txn, LockMode lock_mode, const table_oid_t &oid, const RID &rid)
       -> void;
+  auto Notify(Transaction *txn) -> void;
+  void ReleaseLocks(Transaction *txn);
 
   /** Fall 2022 */
   /** Structure that holds lock requests for a given table oid */
@@ -319,7 +326,9 @@ class LockManager {
   std::atomic<bool> enable_cycle_detection_;
   std::thread *cycle_detection_thread_;
   /** Waits-for graph representation. */
-  std::unordered_map<txn_id_t, std::vector<txn_id_t>> waits_for_;
+  // std::unordered_map<txn_id_t, std::vector<txn_id_t>> waits_for_;
+  // std::unordered_map<txn_id_t, std::set<txn_id_t>> waits_for_;
+  std::map<txn_id_t, std::set<txn_id_t>> waits_for_;
   std::mutex waits_for_latch_;
 };
 
