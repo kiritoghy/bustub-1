@@ -305,7 +305,8 @@ class LockManager {
       -> bool;
   auto CheckCompability(LockMode lock_mode1, LockMode lock_mode2) -> bool;
   auto GrantLock(Transaction *txn, LockMode lock_mode, const table_oid_t &oid) -> bool;
-  auto GrantLock(Transaction *txn, LockMode lock_mode, const table_oid_t &oid, const RID &rid) -> bool;
+  auto GrantLock(Transaction *txn, LockMode lock_mode, const table_oid_t &oid, const RID &rid,
+                 std::shared_ptr<LockRequestQueue> &lock_request_queue) -> bool;
   auto InsertIntoTransactionTableLockSet(Transaction *txn, LockMode lock_mode, const table_oid_t &oid) -> void;
   auto InsertIntoTransactionRowLockSet(Transaction *txn, LockMode lock_mode, const table_oid_t &oid, const RID &rid)
       -> void;

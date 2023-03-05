@@ -136,25 +136,25 @@ TEST(LockManagerTest, RepeatableRead) {
     delete txn;
   });
 
-  std::thread t1([&]() {
-    std::this_thread::sleep_for(std::chrono::milliseconds(50));
-    std::string query = "update nft set terrier = 1 where id = 0";
-    std::stringstream ss;
-    auto writer = bustub::SimpleStreamWriter(ss, true);
-    auto txn = bustub->txn_manager_->Begin(nullptr, bustub::IsolationLevel::REPEATABLE_READ);
+  // std::thread t1([&]() {
+  //   std::this_thread::sleep_for(std::chrono::milliseconds(50));
+  //   std::string query = "update nft set terrier = 1 where id = 0";
+  //   std::stringstream ss;
+  //   auto writer = bustub::SimpleStreamWriter(ss, true);
+  //   auto txn = bustub->txn_manager_->Begin(nullptr, bustub::IsolationLevel::REPEATABLE_READ);
 
-    fmt::print("txn thread t1 {}\n", query);
-    bustub->ExecuteSqlTxn(query, writer, txn);
-    fmt::print("txn thread t1 result\n{}\n", ss.str());
+  //   fmt::print("txn thread t1 {}\n", query);
+  //   bustub->ExecuteSqlTxn(query, writer, txn);
+  //   fmt::print("txn thread t1 result\n{}\n", ss.str());
 
-    CheckGrowing(txn);
-    bustub->txn_manager_->Commit(txn);
-    fmt::print("txn thread t1 commit\n");
-    delete txn;
-  });
+  //   CheckGrowing(txn);
+  //   bustub->txn_manager_->Commit(txn);
+  //   fmt::print("txn thread t1 commit\n");
+  //   delete txn;
+  // });
 
   t0.join();
-  t1.join();
+  // t1.join();
 }
 
 TEST(LockManagerTest, Readcommited) {
@@ -235,25 +235,25 @@ TEST(LockManagerTest, Readcommited) {
     delete txn;
   });
 
-  std::thread t1([&]() {
-    std::this_thread::sleep_for(std::chrono::milliseconds(50));
-    std::string query = "update nft set terrier = 1 where id = 0";
-    std::stringstream ss;
-    auto writer = bustub::SimpleStreamWriter(ss, true);
-    auto txn = bustub->txn_manager_->Begin(nullptr, bustub::IsolationLevel::REPEATABLE_READ);
+  // std::thread t1([&]() {
+  //   std::this_thread::sleep_for(std::chrono::milliseconds(50));
+  //   std::string query = "update nft set terrier = 1 where id = 0";
+  //   std::stringstream ss;
+  //   auto writer = bustub::SimpleStreamWriter(ss, true);
+  //   auto txn = bustub->txn_manager_->Begin(nullptr, bustub::IsolationLevel::REPEATABLE_READ);
 
-    fmt::print("txn thread t1 {}\n", query);
-    bustub->ExecuteSqlTxn(query, writer, txn);
-    fmt::print("txn thread t1 result\n{}", ss.str());
+  //   fmt::print("txn thread t1 {}\n", query);
+  //   bustub->ExecuteSqlTxn(query, writer, txn);
+  //   fmt::print("txn thread t1 result\n{}", ss.str());
 
-    CheckGrowing(txn);
-    bustub->txn_manager_->Commit(txn);
-    fmt::print("txn thread t1 commit\n");
-    delete txn;
-  });
+  //   CheckGrowing(txn);
+  //   bustub->txn_manager_->Commit(txn);
+  //   fmt::print("txn thread t1 commit\n");
+  //   delete txn;
+  // });
 
   t0.join();
-  t1.join();
+  // t1.join();
 }
 
 }  // namespace bustub

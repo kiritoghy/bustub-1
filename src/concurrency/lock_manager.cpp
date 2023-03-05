@@ -281,6 +281,7 @@ auto LockManager::UnlockTable(Transaction *txn, const table_oid_t &oid) -> bool 
 }
 
 auto LockManager::LockRow(Transaction *txn, LockMode lock_mode, const table_oid_t &oid, const RID &rid) -> bool {
+  LOG_INFO("Txn %d try to lock %d row%s from %d", txn->GetTransactionId(), lock_mode, rid.ToString().c_str(), oid);
   if (txn->GetState() == TransactionState::ABORTED || txn->GetState() == TransactionState::COMMITTED) {
     throw TransactionAbortException(txn->GetTransactionId(), AbortReason::TABLE_LOCK_NOT_PRESENT);
     return false;
@@ -352,6 +353,7 @@ auto LockManager::LockRow(Transaction *txn, LockMode lock_mode, const table_oid_
   auto it = row_lock_map_.find(rid);
   if (it == row_lock_map_.end()) {
     // no lock on the table
+    // LOG_INFO("txn %d didn't find lock on row %s", txn->GetTransactionId(), rid.ToString().c_str());
     row_lock_map_[rid] = std::make_shared<LockRequestQueue>();
   }
   auto lock_request_queue = row_lock_map_[rid];
@@ -360,6 +362,7 @@ auto LockManager::LockRow(Transaction *txn, LockMode lock_mode, const table_oid_
   // check lock upgrade
   std::unique_lock<std::mutex> lock2(lock_request_queue->latch_);
   auto iter = lock_request_queue->request_queue_.begin();
+
   for (; iter != lock_request_queue->request_queue_.end(); iter++) {
     if (iter->get()->txn_id_ == txn->GetTransactionId()) {
       // try to upgrade the lock
@@ -375,10 +378,14 @@ auto LockManager::LockRow(Transaction *txn, LockMode lock_mode, const table_oid_
         return false;
       }
       lock_request_queue->upgrading_ = txn->GetTransactionId();
+      LOG_INFO("txn %d is upgrading the row lock", txn->GetTransactionId());
       if (iter->get()->lock_mode_ == LockMode::SHARED) {
         if (lock_mode == LockMode::EXCLUSIVE || lock_mode == LockMode::SHARED_INTENTION_EXCLUSIVE) {
           lock_request_queue->request_queue_.erase(iter);
-          txn->GetSharedRowLockSet()->erase(oid);
+          auto it = txn->GetSharedRowLockSet()->find(oid);
+          if (it != txn->GetSharedRowLockSet()->end()) {
+            it->second.erase(rid);
+          }
           break;
         }
         txn->SetState(TransactionState::ABORTED);
@@ -414,7 +421,7 @@ auto LockManager::LockRow(Transaction *txn, LockMode lock_mode, const table_oid_
   std::unique_lock<std::mutex> lock3(lock_request_queue->latch_);
   while (true) {
     try {
-      bool res = GrantLock(txn, lock_mode, oid, rid);
+      bool res = GrantLock(txn, lock_mode, oid, rid, lock_request_queue);
       if (res) {
         break;
       }
@@ -425,13 +432,14 @@ auto LockManager::LockRow(Transaction *txn, LockMode lock_mode, const table_oid_
       return false;
     }
   }
-  LOG_INFO("txn%d lock row", txn->GetTransactionId());
+  LOG_INFO("txn%d lock row from table %d", txn->GetTransactionId(), oid);
   return true;
 }
 
-auto LockManager::GrantLock(Transaction *txn, LockMode lock_mode, const table_oid_t &oid, const RID &rid) -> bool {
-  LOG_INFO("txn%d try grant %s row lock", txn->GetTransactionId(), rid.ToString().c_str());
-  LOG_INFO("row queue_size:%zu", row_lock_map_[rid]->request_queue_.size());
+auto LockManager::GrantLock(Transaction *txn, LockMode lock_mode, const table_oid_t &oid, const RID &rid,
+                            std::shared_ptr<LockRequestQueue> &lock_request_queue) -> bool {
+  LOG_INFO("txn%d try grant row%s lock", txn->GetTransactionId(), rid.ToString().c_str());
+  LOG_INFO("row queue_size:%zu", lock_request_queue->request_queue_.size());
   if (txn->GetState() == TransactionState::ABORTED) {
     // for (auto iter = row_lock_map_[rid]->request_queue_.begin(); iter != row_lock_map_[rid]->request_queue_.end();
     //      ++iter) {
@@ -453,26 +461,28 @@ auto LockManager::GrantLock(Transaction *txn, LockMode lock_mode, const table_oi
     //     iter = row_lock_map_[rid]->request_queue_.erase(iter);
     //   }
     // }
-    for (auto iter = row_lock_map_[rid]->request_queue_.begin(); iter != row_lock_map_[rid]->request_queue_.end();
+    for (auto iter = lock_request_queue->request_queue_.begin(); iter != lock_request_queue->request_queue_.end();
          ++iter) {
       if (iter->get()->txn_id_ == txn->GetTransactionId() && !iter->get()->granted_) {
-        iter = row_lock_map_[rid]->request_queue_.erase(iter);
-        LOG_INFO("remove request, row queue_size:%zu", row_lock_map_[rid]->request_queue_.size());
+        iter = lock_request_queue->request_queue_.erase(iter);
+        LOG_INFO("remove request, row queue_size:%zu", lock_request_queue->request_queue_.size());
       }
     }
-    LOG_INFO("after row queue_size:%zu", row_lock_map_[rid]->request_queue_.size());
+    LOG_INFO("after row queue_size:%zu", lock_request_queue->request_queue_.size());
 
-    row_lock_map_[rid]->cv_.notify_all();
+    lock_request_queue->cv_.notify_all();
 
     // table_lock_map_[oid]->cv_.notify_all();
-    if (row_lock_map_[rid]->upgrading_ == txn->GetTransactionId()) {
-      row_lock_map_[rid]->upgrading_ = INVALID_TXN_ID;
+    if (lock_request_queue->upgrading_ == txn->GetTransactionId()) {
+      lock_request_queue->upgrading_ = INVALID_TXN_ID;
     }
     throw TransactionAbortException(txn->GetTransactionId(), AbortReason::TABLE_LOCK_NOT_PRESENT);
     return false;
   }
   // std::unique_lock<std::mutex> lock(row_lock_map_latch_);
-  for (auto &lock_request : row_lock_map_[rid]->request_queue_) {
+  // auto lock_request_queue = row_lock_map_[rid];
+  // lock.unlock();
+  for (auto &lock_request : lock_request_queue->request_queue_) {
     if (lock_request->granted_) {
       if (lock_request->txn_id_ == txn->GetTransactionId()) {
         continue;
@@ -485,15 +495,15 @@ auto LockManager::GrantLock(Transaction *txn, LockMode lock_mode, const table_oi
   }
 
   // upgrade lock
-  if (row_lock_map_[rid]->upgrading_ != INVALID_TXN_ID) {
-    if (row_lock_map_[rid]->upgrading_ == txn->GetTransactionId()) {
-      for (auto &lock_request : row_lock_map_[rid]->request_queue_) {
+  if (lock_request_queue->upgrading_ != INVALID_TXN_ID) {
+    if (lock_request_queue->upgrading_ == txn->GetTransactionId()) {
+      for (auto &lock_request : lock_request_queue->request_queue_) {
         if (lock_request->txn_id_ == txn->GetTransactionId()) {
           lock_request->lock_mode_ = lock_mode;
           lock_request->granted_ = true;
-          row_lock_map_[rid]->upgrading_ = INVALID_TXN_ID;
+          lock_request_queue->upgrading_ = INVALID_TXN_ID;
           InsertIntoTransactionRowLockSet(txn, lock_mode, oid, rid);
-          row_lock_map_[rid]->cv_.notify_all();
+          lock_request_queue->cv_.notify_all();
           // lock.unlock();
           return true;
         }
@@ -506,7 +516,7 @@ auto LockManager::GrantLock(Transaction *txn, LockMode lock_mode, const table_oi
 
   // normal lock
   std::vector<std::shared_ptr<LockRequest>> queue;
-  for (auto &lock_request : row_lock_map_[rid]->request_queue_) {
+  for (auto &lock_request : lock_request_queue->request_queue_) {
     if (!lock_request->granted_) {
       if (lock_request->txn_id_ != txn->GetTransactionId()) {
         // if (!CheckCompability(lock_request->lock_mode_, lock_mode)) {
@@ -526,7 +536,7 @@ auto LockManager::GrantLock(Transaction *txn, LockMode lock_mode, const table_oi
       // }
       lock_request->granted_ = true;
       InsertIntoTransactionRowLockSet(txn, lock_request->lock_mode_, oid, rid);
-      row_lock_map_[rid]->cv_.notify_all();
+      lock_request_queue->cv_.notify_all();
       // lock.unlock();
       return true;
     }
@@ -536,7 +546,7 @@ auto LockManager::GrantLock(Transaction *txn, LockMode lock_mode, const table_oi
   }
 
   // BUSTUB_ASSERT(false, "grantLock should not reach here");
-  row_lock_map_[rid]->cv_.notify_all();
+  lock_request_queue->cv_.notify_all();
   return false;
 }
 
@@ -567,6 +577,7 @@ auto LockManager::UnlockRow(Transaction *txn, const table_oid_t &oid, const RID 
   }
   if (iter == lock_request_queue->request_queue_.end()) {
     txn->SetState(TransactionState::ABORTED);
+    LOG_INFO("unlock row from table %d, but no lock held", oid);
     throw TransactionAbortException(txn->GetTransactionId(), AbortReason::ATTEMPTED_UNLOCK_BUT_NO_LOCK_HELD);
     return false;
   }
@@ -595,7 +606,7 @@ auto LockManager::UnlockRow(Transaction *txn, const table_oid_t &oid, const RID 
   }
 
   lock_request_queue->cv_.notify_all();
-  LOG_INFO("txn:%d unlock row", txn->GetTransactionId());
+  LOG_INFO("txn:%d unlock row from table %d", txn->GetTransactionId(), oid);
   return true;
 }
 
